@@ -1,6 +1,12 @@
+import "dotenv/config";
 import { PrismaClient, AtsType, JobSourceType } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) throw new Error("DATABASE_URL is not set. Check apps/api/.env");
+
+const adapter = new PrismaPg({ connectionString: DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   const user = await prisma.user.upsert({
@@ -15,17 +21,21 @@ async function main() {
     },
   });
 
-  const company = await prisma.company.upsert({
+  let company = await prisma.company.findFirst({
     where: { name: "ACME Tech" },
-    update: {},
-    create: { name: "ACME Tech", website: "https://acme.example" },
   });
 
-  const existing = await prisma.job.findFirst({
-    where: { sourceType: "manual", sourceKey: "demo-job-1" },
+  if (!company) {
+    company = await prisma.company.create({
+      data: { name: "ACME Tech", website: "https://acme.example" },
+    });
+  }
+
+  const exists = await prisma.job.findFirst({
+    where: { sourceType: JobSourceType.manual, sourceKey: "demo-job-1" },
   });
 
-  if (!existing) {
+  if (!exists) {
     await prisma.job.create({
       data: {
         sourceType: JobSourceType.manual,
