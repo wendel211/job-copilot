@@ -13,6 +13,42 @@ export class EmailSendService {
   async sendEmail(userId: string, draftId: string) {
     if (!userId) throw new BadRequestException("userId is required");
 
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayCount = await this.prisma.emailSend.count({
+  where: { userId, submittedAt: { gte: todayStart } },
+    });
+
+    if (todayCount >= 5) {
+  throw new BadRequestException("Limite diário de 5 envios atingido.");
+    }
+
+    const lastSend = await this.prisma.emailSend.findFirst({
+  where: { userId },
+  orderBy: { submittedAt: "desc" },
+});
+
+if (lastSend) {
+  const diff = Date.now() - lastSend.submittedAt.getTime();
+  if (diff < 60 * 1000) {
+    throw new BadRequestException("Aguarde 1 minuto antes de enviar outro email.");
+  }
+}
+
+const lastForDraft = await this.prisma.emailSend.findFirst({
+  where: { userId, draftId },
+  orderBy: { submittedAt: "desc" },
+});
+
+if (lastForDraft) {
+  const diffDraft = Date.now() - lastForDraft.submittedAt.getTime();
+  if (diffDraft < 3 * 60 * 1000) {
+    throw new BadRequestException("Aguarde 3 minutos antes de reenviar este draft.");
+  }
+}
+
+
     // Carregar draft
     const draft = await this.prisma.emailDraft.findFirst({
       where: { id: draftId, userId },
