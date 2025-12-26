@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AtsType {
+  greenhouse
+  lever
+  workday
+  gupy
+  unknown
+}
+
+enum JobSourceType {
+  greenhouse
+  lever
+  manual
+}
+
+enum SavedJobStatus {
+  discovered
+  prepared
+  sent
+  screening
+  interview
+  closed
+}
+
+enum EmailSendStatus {
+  queued
+  sent
+  failed
+}
+
+enum EmailProviderType {
+  smtp
+  gmail_oauth
+  microsoft_oauth
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  fullName    String?
+  phone       String?
+  linkedinUrl String?
+  githubUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  savedJobs   SavedJob[]
+  emailDrafts EmailDraft[]
+  emailSends  EmailSend[]
+  providers   EmailProviderConfig[]
+}
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobs Job[]
+
+  @@index([name])
+}
+
+model Job {
+  id         String        @id @default(cuid())
+  sourceType JobSourceType
+  sourceKey  String?
+  atsType    AtsType       @default(unknown)
+
+  title       String
+  location    String?
+  remote      Boolean   @default(false)
+  description String
+  applyUrl    String
+  postedAt    DateTime?
+  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime  @default(now())
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id])
+
+  requirements JobRequirement?
+  savedJobs    SavedJob[]
+  emailDrafts  EmailDraft[] // ✅ inverse relation for EmailDraft.job
+
+  @@index([sourceType, sourceKey])
+  @@index([title])
+}
+
+model JobRequirement {
+  id    String @id @default(cuid())
+  jobId String @unique
+  job   Job    @relation(fields: [jobId], references: [id])
+
+  rawText   String?
+  skills    String[] @default([])
+  seniority String?
+  keywords  String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SavedJob {
+  id        String         @id @default(cuid())
+  userId    String
+  jobId     String
+  status    SavedJobStatus @default(discovered)
+  notes     String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  job  Job  @relation(fields: [jobId], references: [id])
+
+  @@unique([userId, jobId])
+  @@index([status])
+}
+
+model EmailDraft {
+  id     String  @id @default(cuid())
+  userId String
+  jobId  String?
+
+  subject     String
+  bodyText    String
+  toEmail     String?
+  attachments String[] @default([])
+  checklist   String[] @default([])
+
+  editorOpenedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+  job  Job? @relation(fields: [jobId], references: [id])
+
+  sends EmailSend[]
+}
+
+model EmailSend {
+  id      String @id @default(cuid())
+  userId  String
+  draftId String
+
+  providerId String?
+  status     EmailSendStatus @default(queued)
+  error      String?
+
+  toEmail     String?
+  toDomain    String?
+  submittedAt DateTime  @default(now())
+  sentAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User                 @relation(fields: [userId], references: [id])
+  draft    EmailDraft           @relation(fields: [draftId], references: [id])
+  provider EmailProviderConfig? @relation(fields: [providerId], references: [id])
+
+  @@index([status])
+  @@index([toDomain, submittedAt])
+}
+
+model EmailProviderConfig {
+  id       String            @id @default(cuid())
+  userId   String
+  type     EmailProviderType @default(smtp)
+  isActive Boolean           @default(true)
+
+  smtpHost    String?
+  smtpPort    Int?
+  smtpSecure  Boolean?
+  smtpUser    String?
+  smtpPassEnc String?
+
+  fromEmail String?
+  fromName  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  sends EmailSend[] // ✅ inverse relation for EmailSend.provider
+
+  @@index([userId, type])
+}
