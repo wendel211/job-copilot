@@ -6,7 +6,7 @@ import { AppConfigModule } from "./config/config.module";
 import { ImportModule } from "./import/import.module";
 import { TemplatesModule } from "./templates/templates.module";
 import { EmailModule } from "./email/email.module";
-import { EmailSendModule } from "./email/email-send.module";
+import { EmailSendModule } from "./email/send/email-send.module";
 
 @Module({
   imports: [

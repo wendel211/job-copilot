@@ -3,14 +3,22 @@ import nodemailer from "nodemailer";
 export class SmtpEmailStrategy {
   private transporter;
 
-  constructor() {
+  constructor(provider: {
+    smtpHost: string;
+    smtpPort: number;
+    smtpSecure: boolean;
+    smtpUser: string;
+    smtpPassEnc: string;
+    fromEmail: string;
+    fromName: string;
+  }) {
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT ?? 587),
-      secure: false,
+      host: provider.smtpHost,
+      port: provider.smtpPort,
+      secure: provider.smtpSecure,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: provider.smtpUser,
+        pass: provider.smtpPassEnc,
       },
     });
   }
@@ -19,8 +27,8 @@ export class SmtpEmailStrategy {
     toEmail: string;
     subject: string;
     bodyText: string;
-    fromName: string;
     fromEmail: string;
+    fromName: string;
   }): Promise<{ success: boolean; error?: string }> {
     try {
       await this.transporter.sendMail({

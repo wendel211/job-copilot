@@ -1,8 +1,9 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
 import { EmailService } from "./email.service";
-import { GenerateDraftDto } from "./dto/generate-draft.dto";
-import { UpdateDraftDto } from "./dto/update-draft.dto";
+import { GenerateDraftDto } from "./draft/dto/generate-draft.dto";
+import { UpdateDraftDto } from "./draft/dto/update-draft.dto";
 import { ToggleChecklistDto } from "./dto/toggle-checklist.dto";
+
 
 @Controller("email")
 export class EmailController {
