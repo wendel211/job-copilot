@@ -6,7 +6,7 @@ generator client {
 }
 
 // -------------------------------------------------------------
-//  DATASOURCE (SEM URL, CONTROLADO PELO TS CONFIG)
+//  DATASOURCE (SEM URL, CONTROLADO VIA prisma.config.ts)
 // -------------------------------------------------------------
 datasource db {
   provider = "postgresql"
@@ -100,16 +100,13 @@ model UserTemplate {
 // COMPANY
 // =======================
 model Company {
-  id      String  @id @default(cuid())
-  name    String
-  website String?
-
+  id        String   @id @default(cuid())
+  name      String   @unique
+  website   String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   jobs Job[]
-
-  @@index([name])
 }
 
 // =======================
@@ -139,9 +136,8 @@ model Job {
 
   events Event[] @relation("JobEvents")
 
+  @@unique([sourceType, sourceKey])
   @@index([sourceType, sourceKey])
-  @@index([title])
-  @@index([companyId])
 }
 
 // =======================
@@ -279,14 +275,13 @@ model EmailProviderConfig {
 }
 
 // =======================
-// EVENT (AUDITORIA) — 100% CORRIGIDO
+// EVENT (AUDITORIA)
 // =======================
 model Event {
   id        String   @id @default(cuid())
   type      String
   createdAt DateTime @default(now())
 
-  // relation fields
   userId     String?
   jobId      String?
   draftId    String?
@@ -296,7 +291,6 @@ model Event {
 
   metadata Json?
 
-  // relations
   user     User?                @relation("UserEvents", fields: [userId], references: [id], onDelete: Cascade)
   job      Job?                 @relation("JobEvents", fields: [jobId], references: [id])
   draft    EmailDraft?          @relation("DraftEvents", fields: [draftId], references: [id])

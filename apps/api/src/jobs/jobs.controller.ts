@@ -1,22 +1,26 @@
 import { Controller, Get, Query } from "@nestjs/common";
 import { JobsService } from "./jobs.service";
+import { SearchJobsDto } from "./dto/search-jobs.dto";
 
 @Controller("jobs")
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Get("search")
-  search(
-    @Query("q") q?: string,
-    @Query("remote") remote?: string,
-    @Query("take") take?: string,
-    @Query("skip") skip?: string,
-  ) {
+  search(@Query() query: SearchJobsDto) {
     return this.jobsService.search({
-      q: q?.trim(),
-      remote: remote === "true" ? true : remote === "false" ? false : undefined,
-      take: take ? Number(take) : 20,
-      skip: skip ? Number(skip) : 0,
+      q: query.q?.trim(),
+      company: query.company?.trim(),
+      location: query.location?.trim(),
+      atsType: query.atsType,
+      remote:
+        query.remote === "true"
+          ? true
+          : query.remote === "false"
+          ? false
+          : undefined,
+      take: query.take ? Number(query.take) : 20,
+      skip: query.skip ? Number(query.skip) : 0,
     });
   }
 }

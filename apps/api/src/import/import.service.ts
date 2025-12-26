@@ -1,191 +1,119 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../../prisma/prisma.service";
-import { ImportLinkDto } from "./dto/import-link.dto";
-import * as cheerio from "cheerio";
-import { chromium } from "playwright";
-import { AtsType, JobSourceType } from "@prisma/client";
+import { Injectable, BadRequestException } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { ImportJobDto } from "../jobs/dto/import-job.dto";
+import { detectATS } from "../jobs/utils/ats-detector";
 
-type FetchResult = { html: string; finalUrl: string };
+import { GreenhouseScraper } from "./scrapers/greenhouse.scraper";
+import { LeverScraper } from "./scrapers/lever.scraper";
+import { WorkdayScraper } from "./scrapers/workday.scraper";
+import { GupyScraper } from "./scrapers/gupy.scraper";
 
-function detectAts(url: string): AtsType {
-  const u = url.toLowerCase();
-  if (u.includes("greenhouse.io")) return AtsType.greenhouse;
-  if (u.includes("lever.co")) return AtsType.lever;
-  if (u.includes("workday")) return AtsType.workday;
-  if (u.includes("gupy.io") || u.includes("gupy.com.br")) return AtsType.gupy;
-  return AtsType.unknown;
-}
-
-function guessCompanyFromTitle(title: string) {
-  const parts = title
-    .split(/[-|@–—]/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  if (parts.length >= 2) return parts[parts.length - 1];
-  return "Empresa";
-}
-
-// CORREÇÃO AQUI: Permitir string, undefined ou null
-function normalizeWhitespace(text: string | undefined | null) {
-  return (text || "").replace(/\s+/g, " ").trim();
-}
+import { fetchHtml } from "./utils/fetch-html";
+import { fetchDynamicHtml } from "./utils/playwright-fallback";
+import { JobSourceType } from "@prisma/client";
 
 @Injectable()
 export class ImportService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly greenhouse: GreenhouseScraper,
+    private readonly lever: LeverScraper,
+    private readonly workday: WorkdayScraper,
+    private readonly gupy: GupyScraper,
+  ) {}
 
-  private async fetchHtml(url: string): Promise<FetchResult> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-
-    const headers = {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-      "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
-    };
-
-    const looksEmpty = (html: string) =>
-      !html ||
-      html.length < 2000 ||
-      (!html.includes("<body") && !html.includes("</html"));
-
-    try {
-      const res = await fetch(url, {
-        redirect: "follow",
-        headers,
-        signal: controller.signal,
-      });
-
-      const html = await res.text();
-      const finalUrl = res.url || url;
-
-      if (!looksEmpty(html)) return { html, finalUrl };
-
-      return await this.fetchHtmlWithPlaywright(url);
-    } catch {
-      return await this.fetchHtmlWithPlaywright(url);
-    } finally {
-      clearTimeout(timeout);
+  async importFromLink(dto: ImportJobDto) {
+    if (!dto.url) {
+      throw new BadRequestException("URL é obrigatória");
     }
-  }
 
-  private async fetchHtmlWithPlaywright(url: string): Promise<FetchResult> {
-    const browser = await chromium.launch({ headless: true });
+    // 1) Fetch HTML
+    let html = await fetchHtml(dto.url);
 
-    try {
-      const page = await browser.newPage({
-        userAgent:
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
-        locale: "pt-BR",
-      });
-
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-      await page.waitForTimeout(1500);
-
-      const html = await page.content();
-      const finalUrl = page.url();
-
-      return { html, finalUrl };
-    } finally {
-      await browser.close();
+    if (!html || html.length < 2000) {
+      // fallback automático se o site bloquear request normal
+      html = await fetchDynamicHtml(dto.url);
     }
-  }
 
-  private extractJob(html: string, finalUrl: string) {
-    const $ = cheerio.load(html);
+    // 2) Detectar ATS
+    const ats = detectATS(dto.url);
 
-    // Agora normalizeWhitespace aceita o retorno do .attr() sem reclamar
-    const title =
-      normalizeWhitespace($("meta[property='og:title']").attr("content")) ||
-      normalizeWhitespace($("title").text()) ||
-      "Vaga";
+    const scraper = this.getScraper(ats);
+    if (!scraper) {
+      throw new BadRequestException(`ATS não suportado: ${ats}`);
+    }
 
-    const ogDesc = normalizeWhitespace(
-      $("meta[property='og:description']").attr("content")
-    );
-    const metaDesc = normalizeWhitespace($("meta[name='description']").attr("content"));
+    // 3) Extrair dados da vaga via scraper
+    const jobData = await scraper.scrape(dto.url, html);
 
-    const richText =
-      $("#content").text() ||
-      $(".content").text() ||
-      $("main").text() ||
-      $("article").text() ||
-      $(".job__description, .job-description, .job, #job").text() ||
-      $("body").text();
-
-    const bodyText = normalizeWhitespace(richText).slice(0, 15000);
-
-    const description = [ogDesc, metaDesc, bodyText].filter(Boolean).join("\n\n").trim();
-
-    const atsType = detectAts(finalUrl); 
-    const companyName = guessCompanyFromTitle(title);
-
-    const haystack = (title + " " + description).toLowerCase();
-    const remote = haystack.includes("remoto") || haystack.includes("remote");
-
-    const locationGuess =
-      normalizeWhitespace($("[data-testid='job-location']").text()) ||
-      normalizeWhitespace($(".location, .job-location, [class*='location']").first().text()) ||
-      undefined;
-
-    return {
-      title,
-      description,
-      applyUrl: finalUrl,
-      atsType,        
-      companyName,
-      remote,
-      location: locationGuess,
-    };
-  }
-
-  async importByLink(dto: ImportLinkDto) {
-    const { html, finalUrl } = await this.fetchHtml(dto.url);
-    const parsed = this.extractJob(html, finalUrl);
-
-    const sourceKey = `url:${finalUrl}`;
-
-    let company = await this.prisma.company.findFirst({
-      where: { name: parsed.companyName },
+    // 4) Upsert da empresa
+    const company = await this.prisma.company.upsert({
+      where: { name: jobData.company.name },
+      create: {
+        name: jobData.company.name,
+        website: jobData.company.website,
+      },
+      update: {},
     });
 
-    if (!company) {
-      company = await this.prisma.company.create({
-        data: { name: parsed.companyName },
-      });
-    }
+    // 5) Upsert do job via sourceKey
+    const sourceKey = `url:${dto.url}`;
 
-    const existing = await this.prisma.job.findFirst({
-      where: { sourceType: JobSourceType.manual, sourceKey },
-      include: { company: true },
-    });
-
-    if (existing) {
-      return { created: false, job: existing };
-    }
-
-    const job = await this.prisma.job.create({
-      data: {
+    const job = await this.prisma.job.upsert({
+      where: {
+        sourceType_sourceKey: {
+          sourceType: JobSourceType.manual,
+          sourceKey,
+        },
+      },
+      create: {
         sourceType: JobSourceType.manual,
         sourceKey,
-        atsType: parsed.atsType, 
-        title: parsed.title,
-        location: parsed.location, // Certifique-se que no schema.prisma location é String? (opcional)
-        remote: parsed.remote,
-        description: parsed.description || "Descrição não extraída.",
-        applyUrl: parsed.applyUrl,
+        atsType: ats,
+        title: jobData.title,
+        description: jobData.description,
+        remote: jobData.remote ?? false,
+        location: jobData.location ?? null,
+        applyUrl: jobData.applyUrl,
         companyId: company.id,
+        postedAt: jobData.postedAt,
+      },
+      update: {
+        title: jobData.title,
+        description: jobData.description,
+        location: jobData.location ?? null,
+        remote: jobData.remote ?? false,
+        postedAt: jobData.postedAt,
       },
       include: { company: true },
     });
 
-    await this.prisma.savedJob.upsert({
-      where: { userId_jobId: { userId: dto.userId, jobId: job.id } },
-      update: {},
-      create: { userId: dto.userId, jobId: job.id, status: "discovered" },
-    });
+    if (dto.userId) {
+      await this.prisma.savedJob.upsert({
+        where: { userId_jobId: { userId: dto.userId, jobId: job.id } },
+        create: { userId: dto.userId, jobId: job.id },
+        update: {},
+      });
+    }
 
-    return { created: true, job };
+    return {
+      created: true,
+      job,
+    };
+  }
+
+  private getScraper(ats: string) {
+    switch (ats) {
+      case "greenhouse":
+        return this.greenhouse;
+      case "lever":
+        return this.lever;
+      case "workday":
+        return this.workday;
+      case "gupy":
+        return this.gupy;
+      default:
+        return null;
+    }
   }
 }

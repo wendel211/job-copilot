@@ -1,41 +1,72 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../../prisma/prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
+import { AtsType } from "@prisma/client";
 
-type SearchArgs = {
+interface SearchParams {
   q?: string;
+  company?: string;
+  location?: string;
+  atsType?: string;
   remote?: boolean;
   take: number;
   skip: number;
-};
+}
 
 @Injectable()
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async search({ q, remote, take, skip }: SearchArgs) {
-    const where: any = {};
+  async search(params: SearchParams) {
+    const { q, company, location, atsType, remote, take, skip } = params;
 
-    if (typeof remote === "boolean") where.remote = remote;
+    return this.prisma.job.findMany({
+      where: {
+        AND: [
+          q
+            ? {
+                OR: [
+                  { title: { contains: q, mode: "insensitive" } },
+                  { description: { contains: q, mode: "insensitive" } },
+                  {
+                    company: {
+                      name: { contains: q, mode: "insensitive" },
+                    },
+                  },
+                ],
+              }
+            : {},
 
-    if (q) {
-      where.OR = [
-        { title: { contains: q, mode: "insensitive" } },
-        { description: { contains: q, mode: "insensitive" } },
-        { company: { name: { contains: q, mode: "insensitive" } } },
-      ];
-    }
+          company
+            ? {
+                company: {
+                  name: { contains: company, mode: "insensitive" },
+                },
+              }
+            : {},
 
-    const [items, total] = await Promise.all([
-      this.prisma.job.findMany({
-        where,
-        include: { company: true },
-        orderBy: { createdAt: "desc" },
-        take,
-        skip,
-      }),
-      this.prisma.job.count({ where }),
-    ]);
+          location
+            ? {
+                location: { contains: location, mode: "insensitive" },
+              }
+            : {},
 
-    return { total, take, skip, items };
+          atsType
+            ? {
+                atsType: atsType as AtsType,
+              }
+            : {},
+
+          remote === true || remote === false ? { remote } : {},
+        ],
+      },
+      include: {
+        company: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take,
+      skip,
+    });
   }
 }
