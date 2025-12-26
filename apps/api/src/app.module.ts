@@ -5,6 +5,7 @@ import { JobsModule } from "./jobs/jobs.module";
 import { AppConfigModule } from "./config/config.module";
 import { ImportModule } from "./import/import.module";
 import { TemplatesModule } from "./templates/templates.module";
+import { EmailModule } from "./email/email.module";
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { TemplatesModule } from "./templates/templates.module";
     JobsModule,
     ImportModule,
     TemplatesModule,
-  ],    
+    EmailModule,
+  ],
 })
 export class AppModule {}
