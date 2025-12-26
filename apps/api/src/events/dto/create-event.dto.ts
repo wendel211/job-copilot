@@ -24,6 +24,10 @@ export class CreateEventDto {
   @IsOptional()
   @IsString()
   sendId?: string;
+  
+  @IsOptional()
+  @IsString()
+  savedJobId?: string;
 
   @IsOptional()
   @IsObject()
