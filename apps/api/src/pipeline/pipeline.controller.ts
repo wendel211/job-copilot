@@ -1,19 +1,23 @@
 import { Controller, Post, Patch, Get, Param, Body } from "@nestjs/common";
+import { ApiTags, ApiOperation } from "@nestjs/swagger"; // 1. Imports Swagger
 import { PipelineService } from "./pipeline.service";
 import { UpdateStatusDto } from "./dto/update-status.dto";
 import { AddNoteDto } from "./dto/add-note.dto";
 import { CreateSavedJobDto } from "./dto/create-saved-job.dto";
 
+@ApiTags("Pipeline") // 2. Agrupamento no Swagger
 @Controller("pipeline")
 export class PipelineController {
   constructor(private service: PipelineService) {}
 
   @Post()
+  @ApiOperation({ summary: "Adicionar uma vaga ao pipeline (Salvar)" })
   create(@Body() dto: CreateSavedJobDto) {
     return this.service.create(dto);
   }
 
   @Patch(":id/status")
+  @ApiOperation({ summary: "Atualizar status (Ex: Applied, Interviewing)" })
   updateStatus(
     @Param("id") id: string,
     @Body() dto: UpdateStatusDto
@@ -22,6 +26,7 @@ export class PipelineController {
   }
 
   @Patch(":id/note")
+  @ApiOperation({ summary: "Adicionar anotação pessoal na vaga" })
   addNote(
     @Param("id") id: string,
     @Body() dto: AddNoteDto
@@ -30,6 +35,7 @@ export class PipelineController {
   }
 
   @Get("user/:userId")
+  @ApiOperation({ summary: "Listar todas as vagas salvas do usuário" })
   list(@Param("userId") userId: string) {
     return this.service.listByUser(userId);
   }

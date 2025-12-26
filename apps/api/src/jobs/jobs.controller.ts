@@ -1,12 +1,15 @@
 import { Controller, Get, Query } from "@nestjs/common";
+import { ApiTags, ApiOperation } from "@nestjs/swagger"; 
 import { JobsService } from "./jobs.service";
 import { SearchJobsDto } from "./dto/search-jobs.dto";
 
+@ApiTags("Jobs") 
 @Controller("jobs")
 export class JobsController {
   constructor(private readonly jobsService: JobsService) {}
 
   @Get("search")
+  @ApiOperation({ summary: "Buscar vagas com filtros" }) 
   search(@Query() query: SearchJobsDto) {
     return this.jobsService.search({
       q: query.q?.trim(),
