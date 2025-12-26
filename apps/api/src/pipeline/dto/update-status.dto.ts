@@ -1,10 +1,9 @@
-import { IsEnum, IsString } from "class-validator";
-import { PipelineStatus } from "../enums/pipeline-status.enum";
+import { IsEnum } from "class-validator";
+import { SavedJobStatus } from "@prisma/client";
 
 export class UpdateStatusDto {
-  @IsEnum(PipelineStatus)
-  status: PipelineStatus;
-
-  @IsString()
-  userId: string;
+  @IsEnum(SavedJobStatus, {
+    message: "Status inválido. Use: discovered, prepared, sent, screening, interview, closed."
+  })
+  status: SavedJobStatus;
 }

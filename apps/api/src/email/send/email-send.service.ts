@@ -7,6 +7,10 @@ import { PrismaService } from "../../../prisma/prisma.service";
 import { FakeEmailStrategy } from "../strategies/fake.strategy";
 import { SmtpEmailStrategy } from "../strategies/smtp.strategy";
 import { EmailProviderService } from "../provider/email-provider.service";
+import { EventsService } from "../../events/events.service";
+import { EventType } from "../../events/enums/event-type.enum";
+import { PipelineService } from "../../pipeline/pipeline.service";
+import { EmailSendStatus } from "@prisma/client";
 
 @Injectable()
 export class EmailSendService {
@@ -15,16 +19,18 @@ export class EmailSendService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly providerService: EmailProviderService,
+    private readonly events: EventsService,
+    private readonly pipeline: PipelineService
   ) {}
 
   // ============================================================
-  // ENVIO CONTROLADO
+  // ENVIO COMPLETO (Rate limit + Strategy + Eventos + Pipeline)
   // ============================================================
   async sendEmail(userId: string, draftId: string) {
     if (!userId) throw new BadRequestException("userId is required");
 
     // ------------------------------------------------------------
-    // 1) Carregar Draft
+    // 1) Carregar draft
     // ------------------------------------------------------------
     const draft = await this.prisma.emailDraft.findFirst({
       where: { id: draftId, userId },
@@ -40,12 +46,12 @@ export class EmailSendService {
     const toDomain = draft.toEmail.split("@")[1]?.toLowerCase() ?? "unknown";
 
     // ------------------------------------------------------------
-    // 2) R A T E   L I M I T   (Anti-SPAM)
+    // 2) Rate limit
     // ------------------------------------------------------------
     await this.enforceRateLimit(userId, draftId);
 
     // ------------------------------------------------------------
-    // 3) Registrar tentativa de envio
+    // 3) Registrar tentativa (queued)
     // ------------------------------------------------------------
     const send = await this.prisma.emailSend.create({
       data: {
@@ -53,23 +59,21 @@ export class EmailSendService {
         draftId,
         toEmail: draft.toEmail,
         toDomain,
-        status: "queued",
+        status: EmailSendStatus.queued,
       },
     });
 
     // ------------------------------------------------------------
-    // 4) Selecionar Estratégia
+    // 4) Selecionar estratégia
     // ------------------------------------------------------------
     const isProd = process.env.NODE_ENV === "production";
 
-    let strategy: any;
+    let strategy: FakeEmailStrategy | SmtpEmailStrategy;
     let provider: any = null;
 
     if (!isProd) {
-      // → DEV usa estratégia Fake (simula envio)
       strategy = this.fakeStrategy;
     } else {
-      // → PROD exige provider ativo
       provider = await this.providerService.getActiveProvider(userId);
       if (!provider) {
         throw new BadRequestException(
@@ -80,34 +84,84 @@ export class EmailSendService {
       strategy = new SmtpEmailStrategy(provider);
     }
 
-    // ------------------------------------------------------------
-    // 5) Enviar email (real ou fake)
-    // ------------------------------------------------------------
-    const result = await strategy.send({
-      toEmail: draft.toEmail,
-      subject: draft.subject,
-      bodyText: draft.bodyText,
-      fromEmail: provider?.fromEmail ?? draft.user.email,
-      fromName: provider?.fromName ?? draft.user.fullName ?? "JobCopilot User",
-    });
+    try {
+      // ========================================================
+      // 5) TENTAR ENVIAR
+      // ========================================================
+      const result = await strategy.send({
+        toEmail: draft.toEmail,
+        subject: draft.subject,
+        bodyText: draft.bodyText,
+        fromEmail: provider?.fromEmail ?? draft.user.email,
+        fromName: provider?.fromName ?? draft.user.fullName ?? "JobCopilot User",
+      });
 
-    // ------------------------------------------------------------
-    // 6) Atualizar registro com resultado
-    // ------------------------------------------------------------
-    const updated = await this.prisma.emailSend.update({
-      where: { id: send.id },
-      data: {
-        status: result.success ? "sent" : "failed",
-        sentAt: result.success ? new Date() : null,
-        error: result.error ?? null,
-      },
-    });
+      if (!result.success) throw new Error(result.error);
 
-    return { send: updated };
+      // ========================================================
+      // 6) Registrar como ENVIADO
+      // ========================================================
+      const updated = await this.prisma.emailSend.update({
+        where: { id: send.id },
+        data: {
+          status: EmailSendStatus.sent,
+          sentAt: new Date(),
+        },
+      });
+
+      // EVENTO
+      await this.events.register({
+        type: EventType.EMAIL_SENT,
+        userId,
+        draftId: draft.id,
+        sendId: send.id,
+        jobId: draft.jobId ?? undefined,
+        metadata: {
+          to: draft.toEmail,
+          providerId: provider?.id ?? null,
+        },
+      });
+
+      // ========================================================
+      // 7) Atualizar pipeline automaticamente
+      // ========================================================
+      if (draft.jobId) {
+        await this.pipeline.updateStatusByUserAndJob(
+          userId,
+          draft.jobId,
+          "sent"
+        );
+      }
+
+      return { send: updated };
+
+    } catch (error) {
+      // ========================================================
+      // 8) Se falhar → marcar como FAILED
+      // ========================================================
+      const failed = await this.prisma.emailSend.update({
+        where: { id: send.id },
+        data: {
+          status: EmailSendStatus.failed,
+          error: String(error),
+        },
+      });
+
+      // EVENTO
+      await this.events.register({
+        type: EventType.EMAIL_FAILED,
+        userId,
+        draftId,
+        sendId: send.id,
+        metadata: { error: String(error) },
+      });
+
+      return { send: failed };
+    }
   }
 
   // ============================================================
-  // RATE LIMIT (Anti-Bot, Anti-Spam, Anti-Loop)
+  // RATE LIMIT (Anti-bot, Anti-loop, Anti-spam)
   // ============================================================
   private async enforceRateLimit(userId: string, draftId: string) {
     const now = new Date();
@@ -115,11 +169,11 @@ export class EmailSendService {
     // -----------------------------
     // 1) Máximo 5 envios por dia
     // -----------------------------
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     const todayCount = await this.prisma.emailSend.count({
-      where: { userId, submittedAt: { gte: todayStart } },
+      where: { userId, submittedAt: { gte: today } },
     });
 
     if (todayCount >= 5) {
@@ -144,7 +198,7 @@ export class EmailSendService {
     }
 
     // -----------------------------
-    // 3) Evitar loop do mesmo draft (< 3 min)
+    // 3) Evitar reenvio do mesmo draft em < 3 min
     // -----------------------------
     const lastForDraft = await this.prisma.emailSend.findFirst({
       where: { userId, draftId },

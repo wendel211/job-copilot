@@ -1,13 +1,11 @@
-import { IsString, IsEnum } from "class-validator";
-import { PipelineStatus } from "../enums/pipeline-status.enum";
+import { IsString, IsNotEmpty } from "class-validator";
 
 export class CreateSavedJobDto {
   @IsString()
+  @IsNotEmpty()
   userId: string;
 
   @IsString()
+  @IsNotEmpty()
   jobId: string;
-
-  @IsEnum(PipelineStatus)
-  status: PipelineStatus = PipelineStatus.DISCOVERED;
 }

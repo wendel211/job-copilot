@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsObject } from "class-validator";
+import { IsOptional, IsString, IsEnum } from "class-validator";
 import { EventType } from "../enums/event-type.enum";
 
 export class CreateEventDto {
@@ -7,29 +7,28 @@ export class CreateEventDto {
 
   @IsOptional()
   @IsString()
-  userId?: string;
+  userId?: string | null;
 
   @IsOptional()
   @IsString()
-  jobId?: string;
+  jobId?: string | null;
 
   @IsOptional()
   @IsString()
-  draftId?: string;
+  draftId?: string | null;
 
   @IsOptional()
   @IsString()
-  providerId?: string;
+  providerId?: string | null;
 
   @IsOptional()
   @IsString()
-  sendId?: string;
-  
-  @IsOptional()
-  @IsString()
-  savedJobId?: string;
+  sendId?: string | null;
 
   @IsOptional()
-  @IsObject()
-  metadata?: Record<string, any>;
+  @IsString()
+  savedJobId?: string | null;
+
+  @IsOptional()
+  metadata?: any;
 }

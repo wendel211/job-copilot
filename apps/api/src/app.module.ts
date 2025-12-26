@@ -1,23 +1,41 @@
 import { Module } from "@nestjs/common";
+
+import { ConfigModule } from "./config/config.module"; 
 import { PrismaModule } from "../prisma/prisma.module";
+
+// Domínios
 import { HealthModule } from "./health/health.module";
 import { JobsModule } from "./jobs/jobs.module";
-import { AppConfigModule } from "./config/config.module";
 import { ImportModule } from "./import/import.module";
 import { TemplatesModule } from "./templates/templates.module";
 import { EmailModule } from "./email/email.module";
-import { EmailSendModule } from "./email/send/email-send.module";
+
+// Pipeline / Events / Stats
+import { PipelineModule } from "./pipeline/pipeline.module";
+import { EventsModule } from "./events/events.module";
+import { StatsModule } from "./stats/stats.module";
 
 @Module({
   imports: [
-    AppConfigModule,
+  
+    ConfigModule, 
     PrismaModule,
+
+    // Base
     HealthModule,
+
+    // Domínio
     JobsModule,
     ImportModule,
     TemplatesModule,
     EmailModule,
-    EmailSendModule,    
+
+    // Funcionamento interno
+    PipelineModule,
+    EventsModule,
+
+    // Dashboards
+    StatsModule,
   ],
 })
 export class AppModule {}

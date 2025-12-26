@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from "@nestjs/common";
+import { Controller, Post, Body, HttpCode, HttpStatus } from "@nestjs/common";
 import { ImportService } from "./import.service";
 import { ImportJobDto } from "../jobs/dto/import-job.dto";
 
@@ -7,7 +7,14 @@ export class ImportController {
   constructor(private readonly importService: ImportService) {}
 
   @Post("link")
-  importFromLink(@Body() dto: ImportJobDto) {
-    return this.importService.importFromLink(dto);
+  @HttpCode(HttpStatus.OK)
+  async importFromLink(@Body() dto: ImportJobDto) {
+    const result = await this.importService.importFromLink(dto);
+
+    return {
+      success: true,
+      created: result.created,
+      job: result.job,
+    };
   }
 }
