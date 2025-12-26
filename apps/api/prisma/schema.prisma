@@ -55,6 +55,26 @@ model User {
   emailDrafts EmailDraft[]
   emailSends  EmailSend[]
   providers   EmailProviderConfig[]
+
+
+  template    UserTemplate?
+}
+
+model UserTemplate {
+  id     String @id @default(cuid())
+  userId String @unique
+
+  // Conteúdo base editável (MVP)
+  baseIntro   String?
+  baseBullets String?
+  closingLine String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Company {
@@ -89,16 +109,19 @@ model Job {
 
   requirements JobRequirement?
   savedJobs    SavedJob[]
-  emailDrafts  EmailDraft[] // ✅ inverse relation for EmailDraft.job
+
+  // ✅ inverse relation
+  emailDrafts  EmailDraft[]
 
   @@index([sourceType, sourceKey])
   @@index([title])
+  @@index([companyId])
 }
 
 model JobRequirement {
   id    String @id @default(cuid())
   jobId String @unique
-  job   Job    @relation(fields: [jobId], references: [id])
+  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   rawText   String?
   skills    String[] @default([])
@@ -118,11 +141,13 @@ model SavedJob {
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
-  job  Job  @relation(fields: [jobId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   @@unique([userId, jobId])
   @@index([status])
+  @@index([userId])
+  @@index([jobId])
 }
 
 model EmailDraft {
@@ -141,10 +166,15 @@ model EmailDraft {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
-  job  Job? @relation(fields: [jobId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job  Job?  @relation(fields: [jobId], references: [id], onDelete: SetNull)
 
   sends EmailSend[]
+
+
+  @@unique([userId, jobId])
+  @@index([userId])
+  @@index([jobId])
 }
 
 model EmailSend {
@@ -164,12 +194,14 @@ model EmailSend {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User                 @relation(fields: [userId], references: [id])
-  draft    EmailDraft           @relation(fields: [draftId], references: [id])
-  provider EmailProviderConfig? @relation(fields: [providerId], references: [id])
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  draft    EmailDraft           @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  provider EmailProviderConfig? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
   @@index([status])
   @@index([toDomain, submittedAt])
+  @@index([userId])
+  @@index([draftId])
 }
 
 model EmailProviderConfig {
@@ -190,9 +222,10 @@ model EmailProviderConfig {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  sends EmailSend[] // ✅ inverse relation for EmailSend.provider
+
+  sends EmailSend[]
 
   @@index([userId, type])
 }
