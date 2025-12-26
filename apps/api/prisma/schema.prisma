@@ -1,11 +1,20 @@
+// -------------------------------------------------------------
+//  GENERATOR
+// -------------------------------------------------------------
 generator client {
   provider = "prisma-client-js"
 }
 
+// -------------------------------------------------------------
+//  DATASOURCE (SEM URL, CONTROLADO PELO TS CONFIG)
+// -------------------------------------------------------------
 datasource db {
   provider = "postgresql"
 }
 
+// -------------------------------------------------------------
+// ENUMS
+// -------------------------------------------------------------
 enum AtsType {
   greenhouse
   lever
@@ -41,30 +50,40 @@ enum EmailProviderType {
   microsoft_oauth
 }
 
+// -------------------------------------------------------------
+// MODELS
+// -------------------------------------------------------------
+
+// =======================
+// USER
+// =======================
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
+  id          String  @id @default(cuid())
+  email       String  @unique
   fullName    String?
   phone       String?
   linkedinUrl String?
   githubUrl   String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   savedJobs   SavedJob[]
   emailDrafts EmailDraft[]
   emailSends  EmailSend[]
   providers   EmailProviderConfig[]
-
-
   template    UserTemplate?
+
+  events Event[] @relation("UserEvents")
 }
 
+// =======================
+// USER TEMPLATE
+// =======================
 model UserTemplate {
   id     String @id @default(cuid())
   userId String @unique
 
-  // Conteúdo base editável (MVP)
   baseIntro   String?
   baseBullets String?
   closingLine String?
@@ -77,10 +96,14 @@ model UserTemplate {
   @@index([userId])
 }
 
+// =======================
+// COMPANY
+// =======================
 model Company {
-  id        String   @id @default(cuid())
-  name      String
-  website   String?
+  id      String  @id @default(cuid())
+  name    String
+  website String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -89,6 +112,9 @@ model Company {
   @@index([name])
 }
 
+// =======================
+// JOB
+// =======================
 model Job {
   id         String        @id @default(cuid())
   sourceType JobSourceType
@@ -109,19 +135,23 @@ model Job {
 
   requirements JobRequirement?
   savedJobs    SavedJob[]
-
-  // ✅ inverse relation
   emailDrafts  EmailDraft[]
+
+  events Event[] @relation("JobEvents")
 
   @@index([sourceType, sourceKey])
   @@index([title])
   @@index([companyId])
 }
 
+// =======================
+// JOB REQUIREMENTS
+// =======================
 model JobRequirement {
   id    String @id @default(cuid())
   jobId String @unique
-  job   Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
   rawText   String?
   skills    String[] @default([])
@@ -132,17 +162,23 @@ model JobRequirement {
   updatedAt DateTime @updatedAt
 }
 
+// =======================
+// SAVED JOB (PIPELINE)
+// =======================
 model SavedJob {
-  id        String         @id @default(cuid())
-  userId    String
-  jobId     String
-  status    SavedJobStatus @default(discovered)
-  notes     String?
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id     String         @id @default(cuid())
+  userId String
+  jobId  String
+  status SavedJobStatus @default(discovered)
+  notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   job  Job  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  events Event[] @relation("SavedJobEvents")
 
   @@unique([userId, jobId])
   @@index([status])
@@ -150,6 +186,9 @@ model SavedJob {
   @@index([jobId])
 }
 
+// =======================
+// EMAIL DRAFT
+// =======================
 model EmailDraft {
   id     String  @id @default(cuid())
   userId String
@@ -167,16 +206,20 @@ model EmailDraft {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  job  Job?  @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  job  Job? @relation(fields: [jobId], references: [id], onDelete: SetNull)
 
   sends EmailSend[]
 
+  events Event[] @relation("DraftEvents")
 
   @@unique([userId, jobId])
   @@index([userId])
   @@index([jobId])
 }
 
+// =======================
+// EMAIL SEND
+// =======================
 model EmailSend {
   id      String @id @default(cuid())
   userId  String
@@ -198,12 +241,17 @@ model EmailSend {
   draft    EmailDraft           @relation(fields: [draftId], references: [id], onDelete: Cascade)
   provider EmailProviderConfig? @relation(fields: [providerId], references: [id], onDelete: SetNull)
 
+  events Event[] @relation("SendEvents")
+
   @@index([status])
   @@index([toDomain, submittedAt])
   @@index([userId])
   @@index([draftId])
 }
 
+// =======================
+// EMAIL PROVIDER CONFIG
+// =======================
 model EmailProviderConfig {
   id       String            @id @default(cuid())
   userId   String
@@ -224,8 +272,44 @@ model EmailProviderConfig {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-
-  sends EmailSend[]
+  sends  EmailSend[]
+  events Event[]     @relation("ProviderEvents")
 
   @@index([userId, type])
+}
+
+// =======================
+// EVENT (AUDITORIA) — 100% CORRIGIDO
+// =======================
+model Event {
+  id        String   @id @default(cuid())
+  type      String
+  createdAt DateTime @default(now())
+
+  // relation fields
+  userId     String?
+  jobId      String?
+  draftId    String?
+  providerId String?
+  sendId     String?
+  savedJobId String?
+
+  metadata Json?
+
+  // relations
+  user     User?                @relation("UserEvents", fields: [userId], references: [id], onDelete: Cascade)
+  job      Job?                 @relation("JobEvents", fields: [jobId], references: [id])
+  draft    EmailDraft?          @relation("DraftEvents", fields: [draftId], references: [id])
+  provider EmailProviderConfig? @relation("ProviderEvents", fields: [providerId], references: [id])
+  send     EmailSend?           @relation("SendEvents", fields: [sendId], references: [id])
+  savedJob SavedJob?            @relation("SavedJobEvents", fields: [savedJobId], references: [id])
+
+  @@index([type])
+  @@index([createdAt])
+  @@index([userId])
+  @@index([jobId])
+  @@index([draftId])
+  @@index([providerId])
+  @@index([sendId])
+  @@index([savedJobId])
 }
