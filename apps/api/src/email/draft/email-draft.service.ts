@@ -16,38 +16,38 @@ export class EmailDraftService {
   ) {}
 
   // ============================================================
-  // LISTAR DRAFTS
+  // LISTAR DRAFTS DO USUÁRIO
   // ============================================================
   async listDrafts(userId: string) {
     if (!userId) throw new BadRequestException("userId is required");
 
-    return {
-      drafts: await this.prisma.emailDraft.findMany({
-        where: { userId },
-        orderBy: { updatedAt: "desc" },
-        select: {
-          id: true,
-          subject: true,
-          toEmail: true,
-          updatedAt: true,
-          checklist: true,
-          attachments: true,
-          job: {
-            select: {
-              id: true,
-              title: true,
-              atsType: true,
-              applyUrl: true,
-              company: { select: { id: true, name: true } },
-            },
+    const drafts = await this.prisma.emailDraft.findMany({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        subject: true,
+        toEmail: true,
+        updatedAt: true,
+        checklist: true,
+        attachments: true,
+        job: {
+          select: {
+            id: true,
+            title: true,
+            atsType: true,
+            applyUrl: true,
+            company: { select: { id: true, name: true } },
           },
         },
-      }),
-    };
+      },
+    });
+
+    return { drafts };
   }
 
   // ============================================================
-  // BUSCAR UM DRAFT ESPECÍFICO
+  // BUSCAR DRAFT ESPECÍFICO
   // ============================================================
   async getDraftById(userId: string, draftId: string) {
     if (!userId) throw new BadRequestException("userId is required");
@@ -79,34 +79,34 @@ export class EmailDraftService {
   async markOpened(userId: string, draftId: string) {
     if (!userId) throw new BadRequestException("userId is required");
 
-    const exists = await this.prisma.emailDraft.findFirst({
+    const draft = await this.prisma.emailDraft.findFirst({
       where: { id: draftId, userId },
       select: { id: true, editorOpenedAt: true },
     });
 
-    if (!exists) throw new NotFoundException("Draft not found");
+    if (!draft) throw new NotFoundException("Draft not found");
 
     const updated = await this.prisma.emailDraft.update({
       where: { id: draftId },
       data: {
-        editorOpenedAt: exists.editorOpenedAt ?? new Date(),
+        editorOpenedAt: draft.editorOpenedAt ?? new Date(),
       },
       select: { id: true, editorOpenedAt: true, updatedAt: true },
     });
 
-    // EVENT: draft opened
+    // EVENT
     await this.events.register({
-      type: EventType.EMAIL_DRAFT_UPDATED,
+      type: EventType.EMAIL_DRAFT_OPENED,
       userId,
       draftId,
-      metadata: { openedEditor: true }
+      metadata: { openedEditor: true },
     });
 
     return { draft: updated };
   }
 
   // ============================================================
-  // ATUALIZAR DRAFT
+  // ATUALIZAR DRAFT (subject / body / toEmail / checklist...)
   // ============================================================
   async updateDraft(userId: string, draftId: string, dto: UpdateDraftDto) {
     if (!userId) throw new BadRequestException("userId is required");
@@ -128,20 +128,20 @@ export class EmailDraftService {
       },
     });
 
-    // EVENT: draft updated
+    // EVENT
     await this.events.register({
       type: EventType.EMAIL_DRAFT_UPDATED,
       userId,
       draftId,
       jobId: exists.jobId ?? undefined,
-      metadata: dto
+      metadata: { updatedFields: dto },
     });
 
     return { draft: updated };
   }
 
   // ============================================================
-  // TOGGLE CHECKLIST
+  // TOGGLE DE CHECKLIST
   // ============================================================
   async toggleChecklist(userId: string, draftId: string, item: string) {
     if (!userId) throw new BadRequestException("userId is required");
@@ -154,14 +154,13 @@ export class EmailDraftService {
     if (!draft) throw new NotFoundException("Draft not found");
 
     const normalized = item.trim();
-    const normalizedKey = normalized.toLowerCase();
+    const lower = normalized.toLowerCase();
 
     const current = (draft.checklist ?? []).filter(Boolean);
-    const currentKeys = current.map((x) => x.toLowerCase());
-    const has = currentKeys.includes(normalizedKey);
+    const exists = current.some((c) => c.toLowerCase() === lower);
 
-    const next = has
-      ? current.filter((x) => x.toLowerCase() !== normalizedKey)
+    const next = exists
+      ? current.filter((c) => c.toLowerCase() !== lower)
       : [...current, normalized];
 
     const updated = await this.prisma.emailDraft.update({
@@ -169,12 +168,16 @@ export class EmailDraftService {
       data: { checklist: next },
     });
 
-    // EVENT: checklist toggled
+    // EVENT
     await this.events.register({
-      type: EventType.EMAIL_DRAFT_UPDATED,
+      type: EventType.EMAIL_DRAFT_CHECKLIST_TOGGLED,
       userId,
       draftId,
-      metadata: { checklistChanged: true, item }
+      metadata: {
+        item: normalized,
+        added: !exists,
+        removed: exists,
+      },
     });
 
     return { draft: updated };
