@@ -8,8 +8,14 @@ import { GreenhouseScraper } from "./scrapers/greenhouse.scraper";
 import { LeverScraper } from "./scrapers/lever.scraper";
 import { WorkdayScraper } from "./scrapers/workday.scraper";
 import { GupyScraper } from "./scrapers/gupy.scraper";
+import { EventsModule } from "../events/events.module";
+
+
 @Module({
-  imports: [PrismaModule],
+  imports: [
+    PrismaModule,
+    EventsModule, 
+  ],
   controllers: [ImportController],
   providers: [
     ImportService,
