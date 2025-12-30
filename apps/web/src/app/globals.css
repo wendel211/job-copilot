@@ -1,5 +1,3 @@
-# Sobrescrever o arquivo
-cat > apps/web/src/app/globals.css << 'EOF'
 @import "tailwindcss";
 
 :root {
@@ -50,4 +48,3 @@ body {
     transform: translateY(0);
   }
 }
-EOF
