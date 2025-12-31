@@ -1,170 +1,160 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard,
   Briefcase,
-  KanbanSquare,
-  Mail,
-  Settings,
+  LogOut,
   Menu,
+  User,
   X,
+  Trello,           // Ícone para o Pipeline
+  LayoutDashboard,  // Ícone para o Dashboard
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
+import { Button } from '@/components/ui/Button';
 
 // ============================================================================
-// SIDEBAR NAVIGATION
+// NAVEGAÇÃO
 // ============================================================================
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Vagas', href: '/jobs', icon: Briefcase },
-  { name: 'Pipeline', href: '/pipeline', icon: KanbanSquare },
-  { name: 'Rascunhos', href: '/drafts', icon: Mail },
-  { name: 'Configurações', href: '/settings', icon: Settings },
+const navItems = [
+  { 
+    label: 'Dashboard', 
+    icon: <LayoutDashboard className="w-5 h-5" />, 
+    href: '/dashboard' 
+  },
+  { 
+    label: 'Vagas', 
+    icon: <Briefcase className="w-5 h-5" />, 
+    href: '/jobs' 
+  },
+  { 
+    label: 'Pipeline', 
+    icon: <Trello className="w-5 h-5" />, 
+    href: '/pipeline' 
+  },
 ];
 
 // ============================================================================
-// SIDEBAR COMPONENT
+// COMPONENTE APPSHELL
 // ============================================================================
-const Sidebar = () => {
+export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { sidebarOpen, toggleSidebar } = useAppStore();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user, logout } = useAppStore();
+
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
-    <>
-      {/* Mobile overlay */}
-      {sidebarOpen && (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* -----------------------------------------------------------------------
+        SIDEBAR MOBILE (OVERLAY)
+        -----------------------------------------------------------------------
+      */}
+      {isSidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={toggleSidebar}
         />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-50
-          transition-transform duration-300 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:static
-          w-64
+          fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:block
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-900">
-                Job Copilot
-              </span>
+        <div className="h-full flex flex-col">
+          {/* Logo Area */}
+          <div className="h-16 flex items-center px-6 border-b border-gray-100">
+            <div className="flex items-center gap-2 font-bold text-xl text-blue-600">
+              <Briefcase className="w-6 h-6" />
+              <span>JobCopilot</span>
             </div>
             <button
               onClick={toggleSidebar}
-              className="lg:hidden p-1 hover:bg-gray-100 rounded"
+              className="ml-auto lg:hidden text-gray-500"
             >
-              <X className="w-5 h-5" />
+              <X className="w-6 h-6" />
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-4 py-6 space-y-1">
-            {navigation.map((item) => {
+          {/* Navigation Links */}
+          <nav className="flex-1 p-4 space-y-1">
+            {navItems.map((item) => {
               const isActive = pathname === item.href;
-              const Icon = item.icon;
-
               return (
                 <Link
-                  key={item.name}
+                  key={item.href}
                   href={item.href}
+                  onClick={() => setIsSidebarOpen(false)}
                   className={`
-                    flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium
-                    transition-colors duration-200
+                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                     ${
                       isActive
                         ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
                     }
                   `}
                 >
-                  <Icon className="w-5 h-5" />
-                  {item.name}
+                  <span className={isActive ? 'text-blue-600' : 'text-gray-500'}>
+                    {item.icon}
+                  </span>
+                  {item.label}
                 </Link>
               );
             })}
           </nav>
 
-          {/* User info */}
-          <div className="px-4 py-4 border-t border-gray-200">
-            <div className="flex items-center gap-3 px-4 py-2">
-              <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium text-gray-600">D</span>
+          {/* User Footer */}
+          <div className="p-4 border-t border-gray-100">
+            <div className="flex items-center gap-3 mb-4 px-2">
+              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
+                {user?.fullName?.charAt(0) || <User className="w-4 h-4" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">
-                  Demo User
+                  {user?.fullName || 'Usuário'}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  demo@jobcopilot.local
+                  {user?.email || 'user@example.com'}
                 </p>
               </div>
             </div>
+            <Button
+              variant="outline"
+              className="w-full justify-start text-gray-600 hover:text-red-600 hover:bg-red-50 hover:border-red-100"
+              onClick={logout}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sair
+            </Button>
           </div>
         </div>
       </aside>
-    </>
-  );
-};
 
-// ============================================================================
-// HEADER COMPONENT
-// ============================================================================
-const Header = () => {
-  const { toggleSidebar } = useAppStore();
+      {/* -----------------------------------------------------------------------
+        MAIN CONTENT
+        -----------------------------------------------------------------------
+      */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Mobile Header */}
+        <header className="lg:hidden h-16 bg-white border-b border-gray-200 flex items-center px-4 justify-between">
+          <div className="font-bold text-lg text-gray-900">JobCopilot</div>
+          <button
+            onClick={toggleSidebar}
+            className="p-2 text-gray-600 hover:bg-gray-100 rounded-md"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </header>
 
-  return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-      <div className="flex items-center justify-between px-6 py-4">
-        <button
-          onClick={toggleSidebar}
-          className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
-
-        <div className="flex-1 lg:ml-0 ml-4">
-          {/* Search bar ou breadcrumbs podem ir aqui */}
-        </div>
-
-        <div className="flex items-center gap-4">
-          <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-            ✓ API Conectada
-          </span>
-        </div>
-      </div>
-    </header>
-  );
-};
-
-// ============================================================================
-// APP SHELL (Layout Container)
-// ============================================================================
-interface AppShellProps {
-  children: React.ReactNode;
-}
-
-export default function AppShell({ children }: AppShellProps) {
-  return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto">
-          <div className="container-main py-8">{children}</div>
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto w-full">
+            {children}
+          </div>
         </main>
       </div>
     </div>

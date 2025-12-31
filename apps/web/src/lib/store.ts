@@ -12,10 +12,20 @@ import type { Job, SavedJob, EmailDraft } from './api';
 // ============================================================================
 // TIPOS DO STORE
 // ============================================================================
+
+interface User {
+  id: string;
+  email: string;
+  fullName: string;
+}
+
 interface AppState {
   // ====== USER ======
   userId: string;
   setUserId: (id: string) => void;
+  user: User | null;
+  setUser: (user: User | null) => void;
+  logout: () => void;
   
   // ====== JOBS ======
   jobs: Job[];
@@ -50,6 +60,11 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       // ====== VALORES INICIAIS ======
       userId: 'demo@jobcopilot.local', // Usuário padrão para testes
+      user: {
+        id: 'demo@jobcopilot.local',
+        email: 'demo@jobcopilot.local',
+        fullName: 'Demo User',
+      },
       jobs: [],
       pipeline: [],
       drafts: [],
@@ -59,6 +74,15 @@ export const useAppStore = create<AppState>()(
 
       // ====== ACTIONS: USER ======
       setUserId: (id) => set({ userId: id }),
+      setUser: (user) => set({ user }),
+      logout: () => set({
+        user: null,
+        userId: '',
+        jobs: [],
+        pipeline: [],
+        drafts: [],
+        currentView: 'dashboard',
+      }),
 
       // ====== ACTIONS: JOBS ======
       setJobs: (jobs) => set({ jobs }),
@@ -85,6 +109,7 @@ export const useAppStore = create<AppState>()(
       name: 'jobcopilot-storage', // Nome no localStorage
       partialize: (state) => ({
         userId: state.userId,
+        user: state.user,
         sidebarOpen: state.sidebarOpen,
       }),
     }
