@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from "@nestjs/common";
+import { Controller, Get, Query, Param, NotFoundException } from "@nestjs/common";
 import { ApiTags, ApiOperation } from "@nestjs/swagger"; 
 import { JobsService } from "./jobs.service";
 import { SearchJobsDto } from "./dto/search-jobs.dto";
@@ -25,5 +25,12 @@ export class JobsController {
       take: query.take ? Number(query.take) : 20,
       skip: query.skip ? Number(query.skip) : 0,
     });
+  }
+
+
+  @Get(":id")
+  @ApiOperation({ summary: "Buscar detalhes de uma vaga pelo ID" })
+  async findOne(@Param("id") id: string) {
+    return this.jobsService.findOne(id);
   }
 }

@@ -1,11 +1,20 @@
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
-const prisma = new PrismaClient();
+// 1. Configurar o Adapter do PostgreSQL
+// O Prisma Client foi gerado esperando um adapter, então precisamos criá-lo aqui.
+const connectionString = process.env.DATABASE_URL;
+
+const pool = new Pool({ connectionString });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log('🌱 Iniciando seed...');
 
-  // 1. Criar Usuário Demo
+  // 2. Criar Usuário Demo
   const user = await prisma.user.upsert({
     where: { email: 'demo@jobcopilot.local' },
     update: {},
@@ -17,37 +26,35 @@ async function main() {
   });
   console.log(`👤 Usuário criado: ${user.email}`);
 
-  // 2. Criar Empresas para o Crawler (Exemplos Reais)
+  // 3. Criar Empresas para o Crawler
   const companies = [
     {
       name: 'Nubank',
       website: 'nubank.com.br',
       atsProvider: 'greenhouse',
-      careerPageUrl: 'nubank', // Slug do Greenhouse
+      careerPageUrl: 'nubank',
     },
     {
       name: 'Netflix',
       website: 'netflix.com',
       atsProvider: 'lever',
-      careerPageUrl: 'netflix', // Slug do Lever
+      careerPageUrl: 'netflix',
     },
     {
       name: 'Globo',
       website: 'globo.com',
       atsProvider: 'gupy',
-      careerPageUrl: 'globo', // Slug da Gupy
+      careerPageUrl: 'globo',
     },
     {
       name: 'Mercado Livre',
       website: 'mercadolivre.com.br',
-      atsProvider: 'workday', // Exemplo de ATS ainda sem crawler ativo (ficará apenas salvo)
+      atsProvider: 'workday',
       careerPageUrl: 'mercadolibre',
     }
   ];
 
   for (const companyData of companies) {
-    // Usamos 'as any' aqui caso o TS do seu editor ainda esteja cacheado, 
-    // mas o prisma client gerado vai aceitar.
     const company = await prisma.company.upsert({
       where: { name: companyData.name },
       update: {

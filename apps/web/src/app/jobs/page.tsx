@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link'; // Importante para a navegação interna
 import AppShell from '@/components/layout/AppShell';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -25,7 +26,7 @@ import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
 
 // ============================================================================
-// JOB CARD COMPONENT
+// JOB CARD COMPONENT (Atualizado com Navegação)
 // ============================================================================
 interface JobCardProps extends Job {
   onSave: (jobId: string) => void;
@@ -44,7 +45,7 @@ const JobCard = ({ onSave, isSaving, ...job }: JobCardProps) => {
   const atsColor = atsColors[job.atsType as keyof typeof atsColors] || 'default';
 
   return (
-    <Card hover className="transition-all duration-200 group">
+    <Card hover className="transition-all duration-200 group relative">
       <CardContent className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
@@ -60,11 +61,13 @@ const JobCard = ({ onSave, isSaving, ...job }: JobCardProps) => {
               </div>
             </div>
 
-            {/* Title */}
-            <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors cursor-pointer">
-              <a href={job.applyUrl} target="_blank" rel="noopener noreferrer">
+            {/* Title - Link Principal (Cobre o Card via absolute inset-0) */}
+            <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">
+              <Link href={`/jobs/${job.id}`} className="focus:outline-none">
+                {/* Este span faz o card inteiro ser clicável, exceto os botões com z-index maior */}
+                <span className="absolute inset-0" aria-hidden="true" />
                 {job.title}
-              </a>
+              </Link>
             </h3>
 
             {/* Location & Remote */}
@@ -88,13 +91,14 @@ const JobCard = ({ onSave, isSaving, ...job }: JobCardProps) => {
               {job.description}
             </p>
 
-            {/* Actions */}
-            <div className="flex items-center gap-3 pt-2">
+            {/* Actions - Link Externo (z-10 para ficar acima do link do card) */}
+            <div className="flex items-center gap-3 pt-2 relative z-10">
               <a
                 href={job.applyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                onClick={(e) => e.stopPropagation()} // Impede abrir o detalhe ao clicar aqui
               >
                 Ver vaga original
                 <ExternalLink className="w-3 h-3" />
@@ -102,20 +106,25 @@ const JobCard = ({ onSave, isSaving, ...job }: JobCardProps) => {
             </div>
           </div>
 
-          {/* Save Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onSave(job.id)}
-            disabled={isSaving}
-            className={isSaving ? 'opacity-100' : ''}
-          >
-            {isSaving ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <Bookmark className="w-4 h-4 text-gray-500" />
-            )}
-          </Button>
+          {/* Save Button (z-10 para ficar acima do link do card) */}
+          <div className="relative z-10">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation(); // Impede abrir o detalhe ao clicar em salvar
+                onSave(job.id);
+              }}
+              disabled={isSaving}
+              className={isSaving ? 'opacity-100' : ''}
+            >
+              {isSaving ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <Bookmark className="w-4 h-4 text-gray-500" />
+              )}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -132,7 +141,7 @@ const ImportModal = ({ isOpen, onClose, onImport, isLoading }: any) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in">
-      <Card className="w-full max-w-md shadow-2xl">
+      <Card className="w-full max-w-md shadow-2xl relative z-50">
         <CardContent className="p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-2">Importar Vaga</h2>
           <p className="text-sm text-gray-500 mb-4">
@@ -196,7 +205,7 @@ export default function JobsPage() {
       setIsLoading(true);
       const data = await jobsApi.search({ 
         q: searchQuery,
-        remote: filters.remote ? true : undefined, // API espera boolean ou undefined
+        remote: filters.remote ? true : undefined,
         atsType: filters.atsType || undefined,
         take: 50 
       });
@@ -211,7 +220,6 @@ export default function JobsPage() {
 
   // Carregar inicial e quando filtros mudam
   useEffect(() => {
-    // Debounce simples para evitar muitas chamadas enquanto digita
     const timeoutId = setTimeout(() => {
       fetchJobs();
     }, 500);
