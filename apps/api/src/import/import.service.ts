@@ -3,7 +3,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
+import { PrismaService } from "../../prisma/prisma.service";
 import { ImportJobDto } from "../jobs/dto/import-job.dto";
 
 import { detectATS } from "../jobs/utils/ats-detector";

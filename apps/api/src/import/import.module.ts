@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { ImportService } from "./import.service";
 import { ImportController } from "./import.controller";
 
-import { PrismaModule } from "../prisma/prisma.module";
+import { PrismaModule } from "../../prisma/prisma.module";
 
 import { GreenhouseScraper } from "./scrapers/greenhouse.scraper";
 import { LeverScraper } from "./scrapers/lever.scraper";

@@ -10,7 +10,7 @@ import axios from 'axios';
 // ============================================================================
 // CONFIGURAÇÃO BASE
 // ============================================================================
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3003';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
