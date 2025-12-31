@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import AppShell from '@/components/layout/AppShell';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -12,14 +12,17 @@ import {
   Search,
   Plus,
   MapPin,
-  Briefcase,
   Building2,
   ExternalLink,
   Bookmark,
   Filter,
+  X,
+  Globe,
+  CheckCircle2,
 } from 'lucide-react';
 import { jobsApi, pipelineApi, importApi, type Job } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
+import { toast } from 'sonner';
 
 // ============================================================================
 // JOB CARD COMPONENT
@@ -38,55 +41,62 @@ const JobCard = ({ onSave, isSaving, ...job }: JobCardProps) => {
     unknown: 'default',
   } as const;
 
+  const atsColor = atsColors[job.atsType as keyof typeof atsColors] || 'default';
+
   return (
-    <Card hover className="transition-all duration-200">
+    <Card hover className="transition-all duration-200 group">
       <CardContent className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             {/* Company & ATS */}
             <div className="flex items-center gap-2 mb-2">
-              <Badge variant={atsColors[job.atsType as keyof typeof atsColors]}>
+              <Badge variant={atsColor}>
                 {job.atsType.toUpperCase()}
               </Badge>
-              <span className="text-sm text-gray-600">•</span>
-              <div className="flex items-center gap-1 text-sm text-gray-600">
-                <Building2 className="w-4 h-4" />
+              <span className="text-sm text-gray-300">|</span>
+              <div className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
+                <Building2 className="w-4 h-4 text-gray-400" />
                 {job.company.name}
               </div>
             </div>
 
             {/* Title */}
-            <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-blue-600 transition-colors">
-              {job.title}
+            <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors cursor-pointer">
+              <a href={job.applyUrl} target="_blank" rel="noopener noreferrer">
+                {job.title}
+              </a>
             </h3>
 
             {/* Location & Remote */}
             <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
               <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                {job.location || 'Não especificado'}
+                <MapPin className="w-4 h-4 text-gray-400" />
+                {job.location || 'Localização não especificada'}
               </div>
               {job.remote && (
-                <Badge variant="blue" size="sm">
-                  Remoto
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Badge variant="success" size="sm">
+                    <Globe className="w-3 h-3" />
+                    Remoto
+                  </Badge>
+                </div>
               )}
             </div>
 
             {/* Description Preview */}
-            <p className="text-sm text-gray-600 line-clamp-2 mb-4">
-              {job.description.substring(0, 200)}...
+            <p className="text-sm text-gray-500 line-clamp-2 mb-4 leading-relaxed">
+              {job.description}
             </p>
 
             {/* Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 pt-2">
               <a
                 href={job.applyUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
               >
-                Ver vaga
+                Ver vaga original
                 <ExternalLink className="w-3 h-3" />
               </a>
             </div>
@@ -98,9 +108,13 @@ const JobCard = ({ onSave, isSaving, ...job }: JobCardProps) => {
             size="sm"
             onClick={() => onSave(job.id)}
             disabled={isSaving}
-            isLoading={isSaving}
+            className={isSaving ? 'opacity-100' : ''}
           >
-            <Bookmark className="w-4 h-4" />
+            {isSaving ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <Bookmark className="w-4 h-4 text-gray-500" />
+            )}
           </Button>
         </div>
       </CardContent>
@@ -109,62 +123,41 @@ const JobCard = ({ onSave, isSaving, ...job }: JobCardProps) => {
 };
 
 // ============================================================================
-// IMPORT MODAL COMPONENT
+// IMPORT MODAL
 // ============================================================================
-interface ImportModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onImport: (url: string) => void;
-  isLoading: boolean;
-}
-
-const ImportModal = ({ isOpen, onClose, onImport, isLoading }: ImportModalProps) => {
+const ImportModal = ({ isOpen, onClose, onImport, isLoading }: any) => {
   const [url, setUrl] = useState('');
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (url.trim()) {
-      onImport(url.trim());
-    }
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md animate-slide-in">
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in">
+      <Card className="w-full max-w-md shadow-2xl">
         <CardContent className="p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Importar Vaga por Link
-          </h2>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="URL da Vaga"
-              placeholder="https://boards.greenhouse.io/..."
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={isLoading}
-            />
-            <p className="text-sm text-gray-600">
-              Suportamos: Greenhouse, Lever, Workday, Gupy
-            </p>
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={onClose}
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Importar Vaga</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            Cole o link da vaga para adicionar ao sistema.
+          </p>
+          
+          <form onSubmit={(e) => { e.preventDefault(); onImport(url); }} className="space-y-4">
+            <div>
+              <Input
+                placeholder="https://boards.greenhouse.io/..."
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
                 disabled={isLoading}
-                className="flex-1"
-              >
+              />
+              <p className="text-xs text-gray-400 mt-2">
+                Suportamos: Greenhouse, Lever, Workday, Gupy
+              </p>
+            </div>
+            
+            <div className="flex gap-2 justify-end pt-2">
+              <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                disabled={!url.trim() || isLoading}
-                isLoading={isLoading}
-                className="flex-1"
-              >
-                Importar
+              <Button type="submit" disabled={!url.trim() || isLoading}>
+                {isLoading ? 'Importando...' : 'Importar'}
               </Button>
             </div>
           </form>
@@ -175,45 +168,55 @@ const ImportModal = ({ isOpen, onClose, onImport, isLoading }: ImportModalProps)
 };
 
 // ============================================================================
-// JOBS PAGE
+// JOBS PAGE (PRINCIPAL)
 // ============================================================================
 export default function JobsPage() {
   const { userId } = useAppStore();
+  
+  // Data State
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Filters State
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    remote: false,
+    atsType: '' as string,
+  });
+
+  // Actions State
   const [showImportModal, setShowImportModal] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [savingJobId, setSavingJobId] = useState<string | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
 
-  // Load jobs
+  // Busca Principal
+  const fetchJobs = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const data = await jobsApi.search({ 
+        q: searchQuery,
+        remote: filters.remote ? true : undefined, // API espera boolean ou undefined
+        atsType: filters.atsType || undefined,
+        take: 50 
+      });
+      setJobs(data);
+    } catch (error) {
+      console.error('Erro ao buscar:', error);
+      toast.error('Erro ao carregar vagas. Verifique a conexão.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchQuery, filters]);
+
+  // Carregar inicial e quando filtros mudam
   useEffect(() => {
-    loadJobs();
-  }, []);
-
-  const loadJobs = async () => {
-    try {
-      setIsLoading(true);
-      const data = await jobsApi.search({ take: 20 });
-      setJobs(data);
-    } catch (error) {
-      console.error('Erro ao carregar vagas:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSearch = async () => {
-    try {
-      setIsLoading(true);
-      const data = await jobsApi.search({ q: searchQuery, take: 20 });
-      setJobs(data);
-    } catch (error) {
-      console.error('Erro na busca:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    // Debounce simples para evitar muitas chamadas enquanto digita
+    const timeoutId = setTimeout(() => {
+      fetchJobs();
+    }, 500);
+    return () => clearTimeout(timeoutId);
+  }, [fetchJobs]);
 
   const handleImport = async (url: string) => {
     try {
@@ -221,106 +224,167 @@ export default function JobsPage() {
       const { job } = await importApi.importFromLink(url, userId);
       setJobs((prev) => [job, ...prev]);
       setShowImportModal(false);
-      alert('Vaga importada com sucesso!');
+      toast.success('Vaga importada com sucesso!');
     } catch (error) {
-      console.error('Erro ao importar:', error);
-      alert('Erro ao importar vaga. Verifique a URL.');
+      console.error(error);
+      toast.error('Falha ao importar. Verifique o link.');
     } finally {
       setIsImporting(false);
     }
   };
 
-  const handleSaveJob = async (jobId: string) => {
+  const handleSave = async (jobId: string) => {
     try {
-      setSavingJobId(jobId);
+      setSavingId(jobId);
       await pipelineApi.create(userId, jobId);
-      alert('Vaga salva no pipeline!');
+      toast.success('Vaga salva no Pipeline!', {
+        icon: <CheckCircle2 className="w-4 h-4 text-green-500" />
+      });
     } catch (error) {
-      console.error('Erro ao salvar:', error);
-      alert('Erro ao salvar vaga.');
+      toast.error('Erro ao salvar vaga.');
     } finally {
-      setSavingJobId(null);
+      setSavingId(null);
     }
   };
 
-  const filteredJobs = jobs.filter(
-    (job) =>
-      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.company.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilters({ remote: false, atsType: '' });
+  };
+
+  const hasActiveFilters = searchQuery || filters.remote || filters.atsType;
 
   return (
     <AppShell>
-      <div className="space-y-6 animate-slide-in">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="space-y-6 animate-slide-in pb-10">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Vagas</h1>
-            <p className="text-gray-600 mt-1">
-              Busque e salve vagas de diversos ATS
+            <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Vagas</h1>
+            <p className="text-gray-500 mt-1">
+              Busque em nossa base ou importe diretamente do LinkedIn/ATS.
             </p>
           </div>
-          <Button onClick={() => setShowImportModal(true)}>
-            <Plus className="w-4 h-4" />
+          <Button onClick={() => setShowImportModal(true)} className="shadow-sm">
+            <Plus className="w-4 h-4 mr-2" />
             Importar Vaga
           </Button>
         </div>
 
-        {/* Search & Filters */}
-        <Card>
+        {/* Search & Filter Bar */}
+        <Card className="border-none shadow-md bg-white">
           <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex-1">
-                <Input
-                  placeholder="Buscar por título ou empresa..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  icon={<Search className="w-4 h-4" />}
-                />
+            <div className="flex flex-col gap-4">
+              
+              {/* Top Row: Search Input + Toggle Filters */}
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input 
+                    type="text"
+                    placeholder="Buscar por cargo, empresa ou tecnologia..."
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+                <Button 
+                  variant={showFilters ? "secondary" : "outline"}
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="min-w-[100px]"
+                >
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filtros
+                </Button>
               </div>
-              <Button onClick={handleSearch} variant="secondary">
-                <Search className="w-4 h-4" />
-                Buscar
-              </Button>
-              <Button variant="outline">
-                <Filter className="w-4 h-4" />
-                Filtros
-              </Button>
+
+              {/* Filters Row (Collapsible) */}
+              {showFilters && (
+                <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-gray-100 animate-in slide-in-from-top-2">
+                  
+                  {/* ATS Filter */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Plataforma</label>
+                    <select 
+                      className="h-9 px-3 text-sm bg-white border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={filters.atsType}
+                      onChange={(e) => setFilters(prev => ({ ...prev, atsType: e.target.value }))}
+                    >
+                      <option value="">Todas</option>
+                      <option value="greenhouse">Greenhouse</option>
+                      <option value="lever">Lever</option>
+                      <option value="workday">Workday</option>
+                      <option value="gupy">Gupy</option>
+                    </select>
+                  </div>
+
+                  {/* Remote Filter */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Modalidade</label>
+                    <button
+                      onClick={() => setFilters(prev => ({ ...prev, remote: !prev.remote }))}
+                      className={`h-9 px-4 text-sm border rounded-md flex items-center gap-2 transition-colors ${
+                        filters.remote 
+                          ? 'bg-blue-50 border-blue-200 text-blue-700 font-medium' 
+                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Globe className="w-4 h-4" />
+                      Apenas Remoto
+                    </button>
+                  </div>
+
+                  {/* Clear Button */}
+                  {hasActiveFilters && (
+                    <button 
+                      onClick={clearFilters}
+                      className="ml-auto text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium"
+                    >
+                      <X className="w-3 h-3" />
+                      Limpar filtros
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Results */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-600">
-              {filteredJobs.length} vagas encontradas
-            </p>
-          </div>
-
+        {/* Results Grid */}
+        <div className="min-h-[400px]">
           {isLoading ? (
-            <LoadingSpinner />
-          ) : filteredJobs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-4">
+              <LoadingSpinner size="lg" />
+              <p className="text-gray-500 text-sm animate-pulse">Buscando as melhores oportunidades...</p>
+            </div>
+          ) : jobs.length === 0 ? (
             <EmptyState
-              icon={<Briefcase className="w-12 h-12" />}
+              icon={<Search className="w-12 h-12 text-gray-300" />}
               title="Nenhuma vaga encontrada"
-              description="Tente ajustar os filtros ou importe uma nova vaga"
+              description={
+                hasActiveFilters 
+                  ? "Tente ajustar seus filtros de busca para ver mais resultados."
+                  : "Nenhuma vaga na base de dados. Tente importar uma nova vaga!"
+              }
               action={
-                <Button onClick={() => setShowImportModal(true)}>
-                  <Plus className="w-4 h-4" />
-                  Importar Vaga
-                </Button>
+                hasActiveFilters ? (
+                  <Button variant="outline" onClick={clearFilters}>Limpar Filtros</Button>
+                ) : (
+                  <Button onClick={() => setShowImportModal(true)}>
+                    <Plus className="w-4 h-4 mr-2" /> Importar Primeira Vaga
+                  </Button>
+                )
               }
             />
           ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {filteredJobs.map((job) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {jobs.map((job) => (
                 <JobCard
                   key={job.id}
                   {...job}
-                  onSave={handleSaveJob}
-                  isSaving={savingJobId === job.id}
+                  onSave={handleSave}
+                  isSaving={savingId === job.id}
                 />
               ))}
             </div>
@@ -328,9 +392,8 @@ export default function JobsPage() {
         </div>
       </div>
 
-      {/* Import Modal */}
-      <ImportModal
-        isOpen={showImportModal}
+      <ImportModal 
+        isOpen={showImportModal} 
         onClose={() => setShowImportModal(false)}
         onImport={handleImport}
         isLoading={isImporting}
