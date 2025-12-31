@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ImportService } from "./import.service";
+import { CrawlerService } from "./crawler.service"; // <--- Importe aqui
 import { ImportController } from "./import.controller";
 
 import { PrismaModule } from "../../prisma/prisma.module";
@@ -10,7 +11,6 @@ import { WorkdayScraper } from "./scrapers/workday.scraper";
 import { GupyScraper } from "./scrapers/gupy.scraper";
 import { EventsModule } from "../events/events.module";
 
-
 @Module({
   imports: [
     PrismaModule,
@@ -19,10 +19,15 @@ import { EventsModule } from "../events/events.module";
   controllers: [ImportController],
   providers: [
     ImportService,
+    CrawlerService, // <--- Adicione aos providers
     GreenhouseScraper,
     LeverScraper,
     WorkdayScraper,
     GupyScraper,
   ],
+  exports: [
+    ImportService,
+    CrawlerService, 
+  ]
 })
 export class ImportModule {}

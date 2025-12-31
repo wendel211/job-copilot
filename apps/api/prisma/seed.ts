@@ -1,58 +1,70 @@
-import "dotenv/config";
-import { PrismaClient, AtsType, JobSourceType } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from '@prisma/client';
 
-const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) throw new Error("DATABASE_URL is not set. Check apps/api/.env");
-
-const adapter = new PrismaPg({ connectionString: DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function main() {
+  console.log('🌱 Iniciando seed...');
+
+  // 1. Criar Usuário Demo
   const user = await prisma.user.upsert({
-    where: { email: "demo@jobcopilot.local" },
+    where: { email: 'demo@jobcopilot.local' },
     update: {},
     create: {
-      email: "demo@jobcopilot.local",
-      fullName: "Demo User",
-      phone: "+55 75 00000-0000",
-      linkedinUrl: "https://linkedin.com",
-      githubUrl: "https://github.com",
+      email: 'demo@jobcopilot.local',
+      fullName: 'Usuário Demo',
+      phone: '+55 11 99999-9999',
     },
   });
+  console.log(`👤 Usuário criado: ${user.email}`);
 
-  let company = await prisma.company.findFirst({
-    where: { name: "ACME Tech" },
-  });
+  // 2. Criar Empresas para o Crawler (Exemplos Reais)
+  const companies = [
+    {
+      name: 'Nubank',
+      website: 'nubank.com.br',
+      atsProvider: 'greenhouse',
+      careerPageUrl: 'nubank', // Slug do Greenhouse
+    },
+    {
+      name: 'Netflix',
+      website: 'netflix.com',
+      atsProvider: 'lever',
+      careerPageUrl: 'netflix', // Slug do Lever
+    },
+    {
+      name: 'Globo',
+      website: 'globo.com',
+      atsProvider: 'gupy',
+      careerPageUrl: 'globo', // Slug da Gupy
+    },
+    {
+      name: 'Mercado Livre',
+      website: 'mercadolivre.com.br',
+      atsProvider: 'workday', // Exemplo de ATS ainda sem crawler ativo (ficará apenas salvo)
+      careerPageUrl: 'mercadolibre',
+    }
+  ];
 
-  if (!company) {
-    company = await prisma.company.create({
-      data: { name: "ACME Tech", website: "https://acme.example" },
-    });
-  }
-
-  const exists = await prisma.job.findFirst({
-    where: { sourceType: JobSourceType.manual, sourceKey: "demo-job-1" },
-  });
-
-  if (!exists) {
-    await prisma.job.create({
-      data: {
-        sourceType: JobSourceType.manual,
-        sourceKey: "demo-job-1",
-        atsType: AtsType.unknown,
-        title: "Desenvolvedor(a) Full Stack",
-        location: "Remoto - Brasil",
-        remote: true,
-        description:
-          "Vaga para Full Stack com Node.js, NestJS, React/Next.js e PostgreSQL. Diferenciais: Redis, filas e integração com APIs.",
-        applyUrl: "https://acme.example/careers/fullstack",
-        companyId: company.id,
+  for (const companyData of companies) {
+    // Usamos 'as any' aqui caso o TS do seu editor ainda esteja cacheado, 
+    // mas o prisma client gerado vai aceitar.
+    const company = await prisma.company.upsert({
+      where: { name: companyData.name },
+      update: {
+        atsProvider: companyData.atsProvider as any,
+        careerPageUrl: companyData.careerPageUrl,
+      },
+      create: {
+        name: companyData.name,
+        website: companyData.website,
+        atsProvider: companyData.atsProvider as any,
+        careerPageUrl: companyData.careerPageUrl,
       },
     });
+    console.log(`🏢 Empresa configurada: ${company.name} [${companyData.atsProvider}]`);
   }
 
-  console.log("Seed OK:", { user: user.email, company: company.name });
+  console.log('✅ Seed finalizado com sucesso!');
 }
 
 main()
