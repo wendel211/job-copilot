@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -9,8 +9,13 @@ import {
   Menu,
   User,
   X,
-  Trello,           // Ícone para o Pipeline
-  LayoutDashboard,  // Ícone para o Dashboard
+  Trello,           // Pipeline
+  LayoutDashboard,  // Dashboard
+  FileText,         // Rascunhos
+  Settings,         // Configurações
+  Wifi,             // Online
+  WifiOff,          // Offline
+  RefreshCw         // Loading/Retry
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
@@ -34,6 +39,16 @@ const navItems = [
     icon: <Trello className="w-5 h-5" />, 
     href: '/pipeline' 
   },
+  { 
+    label: 'Rascunhos', 
+    icon: <FileText className="w-5 h-5" />, 
+    href: '/drafts' 
+  },
+  { 
+    label: 'Configurações', 
+    icon: <Settings className="w-5 h-5" />, 
+    href: '/settings' 
+  },
 ];
 
 // ============================================================================
@@ -44,7 +59,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user, logout } = useAppStore();
 
+  // Estados de Conexão da API
+  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+
+  // Verifica status da API ao montar
+  const checkApiStatus = async () => {
+    setApiStatus('checking');
+    try {
+      // Tenta bater no endpoint de saúde da API
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3003';
+      const res = await fetch(`${apiUrl}/health`);
+      if (res.ok) {
+        setApiStatus('online');
+      } else {
+        setApiStatus('offline');
+      }
+    } catch (error) {
+      setApiStatus('offline');
+    }
+  };
+
+  useEffect(() => {
+    checkApiStatus();
+    // Opcional: Revalidar a cada 30 segundos
+    const interval = setInterval(checkApiStatus, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -81,7 +123,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
@@ -139,20 +181,46 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         -----------------------------------------------------------------------
       */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Header */}
-        <header className="lg:hidden h-16 bg-white border-b border-gray-200 flex items-center px-4 justify-between">
-          <div className="font-bold text-lg text-gray-900">JobCopilot</div>
-          <button
-            onClick={toggleSidebar}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-md"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
+        {/* Header Unificado (Desktop & Mobile) */}
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={toggleSidebar}
+              className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-md lg:hidden"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+            <h1 className="font-semibold text-lg text-gray-900 capitalize">
+              {navItems.find(i => i.href === pathname)?.label || 'JobCopilot'}
+            </h1>
+          </div>
+
+          {/* API Status Indicator */}
+          <div className="flex items-center gap-3">
+             <div 
+               className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border ${
+                 apiStatus === 'online' 
+                   ? 'bg-green-50 text-green-700 border-green-200' 
+                   : apiStatus === 'offline'
+                   ? 'bg-red-50 text-red-700 border-red-200'
+                   : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+               }`}
+               title={apiStatus === 'online' ? 'API Conectada' : 'API Desconectada'}
+             >
+               {apiStatus === 'checking' && <RefreshCw className="w-3 h-3 animate-spin" />}
+               {apiStatus === 'online' && <Wifi className="w-3 h-3" />}
+               {apiStatus === 'offline' && <WifiOff className="w-3 h-3" />}
+               
+               <span className="hidden sm:inline">
+                 {apiStatus === 'online' ? 'API Online' : apiStatus === 'offline' ? 'API Offline' : 'Verificando...'}
+               </span>
+             </div>
+          </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto w-full">
+        <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 bg-gray-50/50">
+          <div className="max-w-7xl mx-auto w-full h-full">
             {children}
           </div>
         </main>

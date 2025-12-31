@@ -244,8 +244,13 @@ export default function PipelinePage() {
     })
   );
 
+  // FIX: Adicionada lógica para parar o loading se não houver usuário
   useEffect(() => {
-    if (userId) loadPipeline();
+    if (userId) {
+      loadPipeline();
+    } else {
+      setIsLoading(false);
+    }
   }, [userId]);
 
   const loadPipeline = async () => {
