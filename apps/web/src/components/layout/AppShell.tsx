@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Adicionado useRouter
 import {
   Briefcase,
   LogOut,
@@ -17,7 +17,7 @@ import {
   Wifi,             // Online
   WifiOff,          // Offline
   RefreshCw,        // Loading/Retry
-  Search            // Ícone para Vagas (NOVO)
+  Search            // Ícone para Vagas
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
@@ -33,7 +33,7 @@ const navItems = [
   },
   { 
     label: 'Vagas', 
-    icon: <Search className="w-5 h-5" />, // Mudei para lupa (Search) que faz mais sentido
+    icon: <Search className="w-5 h-5" />, 
     href: '/jobs' 
   },
   { 
@@ -62,6 +62,7 @@ const navItems = [
 // COMPONENTE APPSHELL
 // ============================================================================
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter(); // Hook de navegação
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user, logout } = useAppStore();
@@ -71,11 +72,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // Verifica status da API ao montar
+  // --- EFEITO 1: Proteção de Rota (Redireciona se não houver user) ---
+  useEffect(() => {
+    if (!user) {
+      router.push('/login');
+    }
+  }, [user, router]);
+
+  // --- EFEITO 2: Verifica status da API ---
   const checkApiStatus = async () => {
     setApiStatus('checking');
     try {
-      // Tenta bater no endpoint de saúde da API
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
       const res = await fetch(`${apiUrl}/health`);
       if (res.ok) {
@@ -89,11 +96,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    checkApiStatus();
-    // Opcional: Revalidar a cada 30 segundos
-    const interval = setInterval(checkApiStatus, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    // Só verifica a API se o usuário estiver logado
+    if (user) {
+      checkApiStatus();
+      const interval = setInterval(checkApiStatus, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user]);
+
+  // --- RENDERIZAÇÃO CONDICIONAL ---
+  // Se não houver usuário, não renderiza nada (enquanto redireciona)
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

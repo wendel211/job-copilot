@@ -14,6 +14,7 @@ import { EmailModule } from "./email/email.module";
 import { PipelineModule } from "./pipeline/pipeline.module";
 import { EventsModule } from "./events/events.module";
 import { StatsModule } from "./stats/stats.module";
+import { AuthModule } from "./auth/auth.module";
 
 @Module({
   imports: [
@@ -23,6 +24,9 @@ import { StatsModule } from "./stats/stats.module";
 
     // Base
     HealthModule,
+
+    // Autenticação (Login/Registro)
+    AuthModule, 
 
     // Domínio
     JobsModule,

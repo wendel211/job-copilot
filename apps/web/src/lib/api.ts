@@ -22,13 +22,13 @@ const apiClient = axios.create({
 // Interceptor para logging (desenvolvimento)
 if (process.env.NODE_ENV === 'development') {
   apiClient.interceptors.request.use((config) => {
-    console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    // console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   });
 
   apiClient.interceptors.response.use(
     (response) => {
-      console.log(`✅ API Response: ${response.config.url}`, response.data);
+      // console.log(`✅ API Response: ${response.config.url}`, response.data);
       return response;
     },
     (error) => {
@@ -95,6 +95,27 @@ export interface EmailProvider {
   fromEmail: string | null;
   fromName: string | null;
 }
+
+// ============================================================================
+// 1. API - AUTH (LOGIN & REGISTRO) - <--- ADICIONADO
+// ============================================================================
+export const authApi = {
+  /**
+   * Realizar Login
+   */
+  async login(email: string, password: string) {
+    const { data } = await apiClient.post('/auth/login', { email, password });
+    return data;
+  },
+
+  /**
+   * Criar nova conta
+   */
+  async register(email: string, password: string, fullName: string) {
+    const { data } = await apiClient.post('/auth/register', { email, password, fullName });
+    return data;
+  }
+};
 
 // ============================================================================
 // API - JOBS (Busca de Vagas)
@@ -266,7 +287,13 @@ export const providersApi = {
   },
 };
 
-// ============================================================================
-// EXPORTAÇÃO DEFAULT
-// ============================================================================
-export default apiClient; // Exporta a instância axios por padrão, caso precise acessar diretamente
+
+export default {
+  auth: authApi,
+  jobs: jobsApi,
+  import: importApi,
+  pipeline: pipelineApi,
+  drafts: draftsApi,
+  email: emailApi,
+  providers: providersApi,
+};

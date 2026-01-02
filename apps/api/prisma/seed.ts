@@ -2,9 +2,9 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
+import * as bcrypt from 'bcryptjs'; // <--- Importante para gerar o hash
 
 // 1. Configurar o Adapter do PostgreSQL
-// O Prisma Client foi gerado esperando um adapter, então precisamos criá-lo aqui.
 const connectionString = process.env.DATABASE_URL;
 
 const pool = new Pool({ connectionString });
@@ -14,19 +14,26 @@ const prisma = new PrismaClient({ adapter });
 async function main() {
   console.log('🌱 Iniciando seed...');
 
-  // 2. Criar Usuário Demo
+  // --- 1. Gerar Hash da Senha ---
+  // A senha será "123456"
+  const passwordHash = await bcrypt.hash('123456', 10);
+
+  // --- 2. Criar Usuário Demo ---
   const user = await prisma.user.upsert({
     where: { email: 'demo@jobcopilot.local' },
-    update: {},
+    update: {
+      password: passwordHash, // Atualiza a senha se o usuário já existir
+    },
     create: {
       email: 'demo@jobcopilot.local',
       fullName: 'Usuário Demo',
       phone: '+55 11 99999-9999',
+      password: passwordHash, // <--- CAMPO OBRIGATÓRIO ADICIONADO
     },
   });
-  console.log(`👤 Usuário criado: ${user.email}`);
+  console.log(`👤 Usuário criado: ${user.email} (Senha: 123456)`);
 
-  // 3. Criar Empresas para o Crawler
+  // --- 3. Criar Empresas para o Crawler ---
   const companies = [
     {
       name: 'Nubank',
