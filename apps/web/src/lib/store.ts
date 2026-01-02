@@ -1,8 +1,7 @@
 /**
  * STORE GLOBAL - ZUSTAND
- * 
- * Gerenciamento de estado centralizado e simples.
- * Zustand é mais leve que Redux e perfeito para projetos médios.
+ * * Gerenciamento de estado centralizado.
+ * Atualizado para suportar fluxo de Login/Logout real.
  */
 
 import { create } from 'zustand';
@@ -13,7 +12,7 @@ import type { Job, SavedJob, EmailDraft } from './api';
 // TIPOS DO STORE
 // ============================================================================
 
-interface User {
+export interface User {
   id: string;
   email: string;
   fullName: string;
@@ -59,12 +58,10 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       // ====== VALORES INICIAIS ======
-      userId: 'demo@jobcopilot.local', // Usuário padrão para testes
-      user: {
-        id: 'demo@jobcopilot.local',
-        email: 'demo@jobcopilot.local',
-        fullName: 'Demo User',
-      },
+      // Começamos deslogados (vazios) para forçar o usuário a fazer Login
+      userId: '', 
+      user: null,
+
       jobs: [],
       pipeline: [],
       drafts: [],
@@ -74,15 +71,29 @@ export const useAppStore = create<AppState>()(
 
       // ====== ACTIONS: USER ======
       setUserId: (id) => set({ userId: id }),
-      setUser: (user) => set({ user }),
-      logout: () => set({
-        user: null,
-        userId: '',
-        jobs: [],
-        pipeline: [],
-        drafts: [],
-        currentView: 'dashboard',
+      
+      setUser: (user) => set({ 
+        user, 
+        userId: user ? user.id : '' // Garante sincronia entre user e userId
       }),
+      
+      logout: () => {
+        // Remove a persistência do navegador para evitar login fantasma
+        try {
+            localStorage.removeItem('jobcopilot-storage');
+        } catch (e) {
+            console.error('Erro ao limpar storage', e);
+        }
+
+        set({
+          user: null,
+          userId: '',
+          jobs: [],
+          pipeline: [],
+          drafts: [],
+          currentView: 'dashboard',
+        });
+      },
 
       // ====== ACTIONS: JOBS ======
       setJobs: (jobs) => set({ jobs }),
@@ -138,7 +149,7 @@ export const useStats = () =>
   useAppStore((state) => ({
     totalJobs: state.jobs.length,
     totalPipeline: state.pipeline.length,
-    applied: state.pipeline.filter((i) => i.status === 'sent').length,
+    applied: state.pipeline.filter((i) => i.status === 'sent' || i.status === 'applied').length,
     interviews: state.pipeline.filter((i) => i.status === 'interview').length,
     drafts: state.drafts.length,
   }));
