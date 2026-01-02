@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -13,14 +13,13 @@ import {
   closestCenter,
 } from '@dnd-kit/core';
 import { toast } from 'sonner';
-
 import AppShell from '@/components/layout/AppShell';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/Empty';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { EditJobModal } from '@/components/pipeline/EditJobModal';
+import { AtsBadge } from '@/components/pipeline/AtsBadge';
 import {
   Building2,
   MapPin,
@@ -34,24 +33,21 @@ import { pipelineApi, type SavedJob } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
 
 // ============================================================================
-// CONFIGURAÇÕES E TIPOS
+// CONFIGURAÇÕES
 // ============================================================================
 const PIPELINE_COLUMNS = [
-  { id: 'discovered', label: 'Descoberta', color: 'bg-gray-100' },
-  { id: 'prepared', label: 'Preparado', color: 'bg-blue-100' },
-  { id: 'sent', label: 'Enviado', color: 'bg-green-100' },
-  { id: 'screening', label: 'Triagem', color: 'bg-yellow-100' },
-  { id: 'interview', label: 'Entrevista', color: 'bg-purple-100' },
-  { id: 'closed', label: 'Encerrado', color: 'bg-red-100' },
+  { id: 'discovered', label: 'Interesse / Salvas', color: 'bg-gray-50 border-gray-200' },
+  { id: 'applied', label: 'Candidaturas Enviadas', color: 'bg-blue-50 border-blue-200' },
+  { id: 'interview', label: 'Entrevistas', color: 'bg-purple-50 border-purple-200' },
+  { id: 'offer', label: 'Oferta / Proposta', color: 'bg-green-50 border-green-200' },
+  { id: 'rejected', label: 'Encerrado / Rejeitado', color: 'bg-red-50 border-red-200' },
 ] as const;
 
 type PipelineStatus = typeof PIPELINE_COLUMNS[number]['id'];
 
 // ============================================================================
-// COMPONENTES AUXILIARES DE DRAG & DROP
+// DRAGGABLE CARD
 // ============================================================================
-
-// 1. Wrapper para tornar o Card arrastável
 const DraggablePipelineCard = ({ item, ...props }: PipelineCardProps) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: item.id,
@@ -62,91 +58,116 @@ const DraggablePipelineCard = ({ item, ...props }: PipelineCardProps) => {
     ? {
         transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
         zIndex: isDragging ? 50 : undefined,
-        opacity: isDragging ? 0.3 : 1, // Opacidade do item original enquanto arrasta
+        opacity: isDragging ? 0 : 1,
       }
     : undefined;
 
   return (
-    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="touch-none">
-      <PipelineCard item={item} {...props} isDragging={isDragging} />
-    </div>
-  );
-};
-
-// 2. Wrapper para tornar a Coluna um alvo
-const DroppableColumn = ({ column, children }: { column: any; children: React.ReactNode }) => {
-  const { setNodeRef, isOver } = useDroppable({
-    id: column.id,
-  });
-
-  return (
-    <div ref={setNodeRef} className="flex-shrink-0 w-80">
-      <div className={`bg-white rounded-xl border transition-colors h-full flex flex-col ${
-        isOver ? 'border-blue-400 bg-blue-50/30' : 'border-gray-200'
-      }`}>
-        {/* Column Header */}
-        <div className={`${column.color} px-4 py-3 rounded-t-xl border-b border-gray-200`}>
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-sm text-gray-900">{column.label}</h3>
-          </div>
-        </div>
-        {/* Column Content Area */}
-        <div className="p-3 flex-1 min-h-[150px] overflow-y-auto max-h-[calc(100vh-280px)]">
-          {children}
-        </div>
-      </div>
+    <div ref={setNodeRef} style={style} className="touch-none">
+      <PipelineCard
+        item={item}
+        {...props}
+        isDragging={isDragging}
+        dragHandlers={{ ...listeners, ...attributes }}
+      />
     </div>
   );
 };
 
 // ============================================================================
-// COMPONENTE CARD (UI PURA)
+// DROPPABLE COLUMN
+// ============================================================================
+const DroppableColumn = ({ column, children }: { column: any; children: React.ReactNode }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const childCount = React.Children.count(children);
+
+  return (
+    <section ref={setNodeRef} className="flex-shrink-0 w-80 flex flex-col h-full">
+      {/* Header sticky estável */}
+      <header
+        className={`sticky top-0 z-10 p-3 rounded-t-xl border-t border-l border-r flex justify-between items-center ${column.color} backdrop-blur-sm`}
+      >
+        <h3 className="font-semibold text-sm text-gray-700">{column.label}</h3>
+        <span
+          aria-live="polite"
+          className="bg-white/70 text-gray-700 text-xs px-2 py-0.5 rounded-full font-medium"
+        >
+          {childCount}
+        </span>
+      </header>
+
+      {/* Conteúdo */}
+      <div
+        className={`flex-1 p-3 space-y-3 overflow-y-auto overflow-x-hidden border-l border-r border-b border-gray-200 rounded-b-xl transition-colors ${
+          isOver ? 'bg-blue-50/60 ring-2 ring-inset ring-blue-300' : 'bg-gray-50/30'
+        }`}
+      >
+        {childCount === 0 ? (
+          <div className="flex items-center justify-center h-32 text-gray-400 text-xs border-2 border-dashed border-gray-200 rounded-lg">
+            Arraste cards aqui
+          </div>
+        ) : (
+          children
+        )}
+      </div>
+    </section>
+  );
+};
+
+// ============================================================================
+// PIPELINE CARD
 // ============================================================================
 interface PipelineCardProps {
   item: SavedJob;
   onEdit: (item: SavedJob) => void;
   onDelete: (itemId: string) => void;
   isDragging?: boolean;
+  dragHandlers?: any;
 }
 
-const PipelineCard = ({ item, onEdit, onDelete, isDragging }: PipelineCardProps) => {
+const PipelineCard = ({ item, onEdit, onDelete, isDragging, dragHandlers }: PipelineCardProps) => {
   const [showMenu, setShowMenu] = useState(false);
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: 'short',
-    });
-  };
+  useEffect(() => {
+    if (!showMenu) return;
+    const onEsc = (e: KeyboardEvent) => e.key === 'Escape' && setShowMenu(false);
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [showMenu]);
 
   return (
-    <Card 
-      className={`mb-3 transition-shadow bg-white ${isDragging ? 'shadow-2xl ring-2 ring-blue-500 rotate-2' : 'hover:shadow-md'}`}
+    <Card
+      className={`relative bg-white transition-all ${
+        isDragging ? 'shadow-2xl rotate-2 ring-2 ring-blue-500' : 'hover:shadow-md hover:border-blue-300'
+      }`}
     >
       <CardContent className="p-4">
-        <div className="space-y-3">
-          {/* Header */}
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-gray-900 truncate">
-                {item.job.title}
-              </h3>
-              <div className="flex items-center gap-1 text-xs text-gray-600 mt-1">
-                <Building2 className="w-3 h-3" />
-                {item.job.company.name}
-              </div>
-            </div>
-            {/* Menu Ações (só mostra se não estiver arrastando) */}
-            {!isDragging && (
-              <div className="relative" onPointerDown={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-1 hover:bg-gray-100 rounded"
-                >
-                  <MoreVertical className="w-4 h-4 text-gray-400" />
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-20">
+        {/* Header */}
+        <div className="flex items-start gap-2 mb-3">
+          <div {...dragHandlers} className="flex-1 min-w-0 cursor-grab active:cursor-grabbing">
+            <h4 className="font-semibold text-sm text-gray-900 truncate">
+              {item.job.title}
+            </h4>
+          </div>
+
+          {!isDragging && (
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(v => !v);
+                }}
+                aria-haspopup="menu"
+                aria-expanded={showMenu}
+                className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {showMenu && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                  <div className="absolute right-0 mt-1 w-36 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-1">
                     <button
                       onClick={() => {
                         setShowMenu(false);
@@ -154,253 +175,225 @@ const PipelineCard = ({ item, onEdit, onDelete, isDragging }: PipelineCardProps)
                       }}
                       className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                     >
-                      <Edit3 className="w-3 h-3" />
-                      Editar
+                      <Edit3 className="w-4 h-4" /> Editar
                     </button>
                     <button
                       onClick={() => {
                         setShowMenu(false);
                         onDelete(item.id);
                       }}
-                      className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 flex items-center gap-2 text-red-600"
                     >
-                      <Trash2 className="w-3 h-3" />
-                      Remover
+                      <Trash2 className="w-4 h-4" /> Remover
                     </button>
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="space-y-1.5">
-            {item.job.location && (
-              <div className="flex items-center gap-1 text-xs text-gray-600">
-                <MapPin className="w-3 h-3" />
-                {item.job.location}
-              </div>
-            )}
-            <div className="flex items-center gap-1 text-xs text-gray-600">
-              <Calendar className="w-3 h-3" />
-              {formatDate(item.createdAt)}
+                </>
+              )}
             </div>
-          </div>
-
-          {/* Badges */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="blue" size="sm">
-              {item.job.atsType.toUpperCase()}
-            </Badge>
-            {item.job.remote && (
-              <Badge variant="success" size="sm">
-                Remoto
-              </Badge>
-            )}
-          </div>
-
-          {/* Notes */}
-          {item.notes && (
-            <p className="text-xs text-gray-600 line-clamp-2 bg-gray-50 p-2 rounded border border-gray-100">
-              {item.notes}
-            </p>
-          )}
-
-          {/* Link (só mostra se não estiver arrastando) */}
-          {!isDragging && (
-            <a
-              href={item.job.applyUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onPointerDown={(e) => e.stopPropagation()} 
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 mt-2"
-            >
-              Ver vaga
-              <ExternalLink className="w-3 h-3" />
-            </a>
           )}
         </div>
+
+        {/* Empresa + ATS */}
+        <div {...dragHandlers} className="flex items-center gap-2 mb-3 cursor-grab">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 flex-1 min-w-0">
+            <Building2 className="w-3.5 h-3.5" />
+            <span className="truncate">{item.job.company.name}</span>
+          </div>
+          <AtsBadge type={item.job.atsType || 'unknown'} />
+        </div>
+
+        {/* Detalhes */}
+        <div {...dragHandlers} className="grid grid-cols-2 gap-2 mb-3 cursor-grab">
+          <div className="flex items-center text-xs text-gray-500">
+            <MapPin className="w-3.5 h-3.5 mr-1.5 opacity-70" />
+            <span className="truncate">
+              {item.job.remote ? 'Remoto' : item.job.location || 'N/A'}
+            </span>
+          </div>
+          <div className="flex items-center text-xs text-gray-500">
+            <Calendar className="w-3.5 h-3.5 mr-1.5 opacity-70" />
+            <span>{new Date(item.updatedAt).toLocaleDateString('pt-BR')}</span>
+          </div>
+        </div>
+
+        {/* Notas */}
+        {item.notes && (
+          <div {...dragHandlers} className="bg-yellow-50 border border-yellow-100 p-2 rounded text-xs italic mb-3 cursor-grab">
+            <p className="line-clamp-2">"{item.notes}"</p>
+          </div>
+        )}
+
+        {/* Link */}
+        {!isDragging && (
+          <a
+            href={item.job.applyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="border-t border-gray-100 pt-3 -mx-4 px-4 -mb-4 pb-4 flex items-center justify-center text-xs text-blue-600 hover:bg-blue-50/50"
+          >
+            Ver Vaga <ExternalLink className="w-3.5 h-3.5 ml-1.5" />
+          </a>
+        )}
       </CardContent>
     </Card>
   );
 };
 
 // ============================================================================
-// PÁGINA PRINCIPAL
+// PAGE
 // ============================================================================
 export default function PipelinePage() {
   const { userId } = useAppStore();
   const [items, setItems] = useState<SavedJob[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingJob, setEditingJob] = useState<SavedJob | null>(null);
-  const [activeId, setActiveId] = useState<string | null>(null); // ID do card sendo arrastado
+  const [activeId, setActiveId] = useState<string | null>(null);
 
-  // Sensores DND configurados para permitir clique vs arraste
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // Só inicia drag após mover 8px
-      },
-    })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
-  // FIX: Adicionada lógica para parar o loading se não houver usuário
   useEffect(() => {
-    if (userId) {
-      loadPipeline();
-    } else {
-      setIsLoading(false);
-    }
+    if (userId) loadPipeline();
   }, [userId]);
 
   const loadPipeline = async () => {
     try {
       setIsLoading(true);
-      const data = await pipelineApi.list(userId);
-      setItems(data);
-    } catch (error) {
+      setItems(await pipelineApi.list(userId));
+    } catch {
       toast.error('Erro ao carregar pipeline');
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Drag & Drop Handler
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
+  const activeItem = useMemo(
+    () => items.find(i => i.id === activeId) || null,
+    [activeId, items]
+  );
 
+  const getItemsByStatus = (status: PipelineStatus) => {
+    if (status === 'interview') return items.filter(i => ['interview', 'screening'].includes(i.status));
+    if (status === 'applied') return items.filter(i => ['applied', 'sent'].includes(i.status));
+    if (status === 'rejected') return items.filter(i => ['rejected', 'closed'].includes(i.status));
+    return items.filter(i => i.status === status);
+  };
+
+  const handleDragEnd = async ({ active, over }: DragEndEvent) => {
+    setActiveId(null);
     if (!over) return;
 
-    const itemId = active.id as string;
+    const id = active.id as string;
     const newStatus = over.id as PipelineStatus;
-    const currentItem = items.find((i) => i.id === itemId);
+    const current = items.find(i => i.id === id);
+    if (!current || current.status === newStatus) return;
 
-    // Se soltou na mesma coluna ou item inválido
-    if (!currentItem || currentItem.status === newStatus) return;
-
-    // 1. Atualização Otimista (UI muda na hora)
-    const previousItems = [...items];
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, status: newStatus } : item
-      )
-    );
+    const snapshot = [...items];
+    setItems(prev => prev.map(i => (i.id === id ? { ...i, status: newStatus } : i)));
 
     try {
-      // 2. Chama API
-      await pipelineApi.updateStatus(itemId, newStatus);
+      await pipelineApi.updateStatus(id, newStatus);
       toast.success(`Movido para ${PIPELINE_COLUMNS.find(c => c.id === newStatus)?.label}`);
-    } catch (error) {
-      // 3. Rollback se der erro
-      setItems(previousItems);
-      toast.error('Erro ao mover card. Tente novamente.');
-      console.error(error);
+    } catch {
+      setItems(snapshot);
+      toast.error('Erro ao atualizar status');
     }
   };
 
-  const handleDelete = async (itemId: string) => {
-    toast.promise(
-      // Simulação de delete (implemente o endpoint na API se não existir)
-      new Promise((resolve) => {
-        setItems((prev) => prev.filter((item) => item.id !== itemId));
-        resolve(true);
-      }),
-      {
-        loading: 'Removendo...',
-        success: 'Vaga removida do pipeline',
-        error: 'Erro ao remover vaga',
-      }
-    );
+  const handleDelete = async (id: string) => {
+    const snapshot = [...items];
+    setItems(prev => prev.filter(i => i.id !== id));
+    try {
+      await pipelineApi.delete(id);
+      toast.success('Vaga removida do pipeline');
+    } catch {
+      setItems(snapshot);
+      toast.error('Erro ao remover vaga');
+    }
   };
 
-  const handleUpdateJob = async (id: string, data: { notes?: string }) => {
-    // Aqui você chamaria pipelineApi.update(id, data)
-    // Vamos simular atualizando o estado local por enquanto
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, ...data } : item))
-    );
-    // TODO: Chamar API real de update
-    // await pipelineApi.update(id, data);
+  const handleUpdateNotes = async (id: string, data: { notes: string }) => {
+    const snapshot = [...items];
+    setItems(prev => prev.map(i => (i.id === id ? { ...i, notes: data.notes } : i)));
+    try {
+      await pipelineApi.addNote(id, data.notes);
+      toast.success('Nota salva com sucesso');
+    } catch {
+      setItems(snapshot);
+      toast.error('Erro ao salvar nota');
+    }
   };
-
-  const getItemsByStatus = (status: PipelineStatus) =>
-    items.filter((item) => item.status === status);
-
-  const activeItem = activeId ? items.find((i) => i.id === activeId) : null;
 
   return (
     <AppShell>
-      <div className="space-y-6 animate-slide-in h-full flex flex-col">
+      <div className="h-full flex flex-col">
         {/* Header */}
-        <div className="flex-shrink-0">
-          <h1 className="text-3xl font-bold text-gray-900">Pipeline</h1>
-          <p className="text-gray-600 mt-1">
-            Gerencie suas candidaturas em tempo real
-          </p>
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">Pipeline de Candidaturas</h1>
+            <p className="text-sm text-gray-500">
+              Arraste os cards entre as colunas para atualizar o status.
+            </p>
+          </div>
+          <div className="bg-white border px-4 py-2 rounded-lg shadow-sm text-sm">
+            <span className="text-gray-500">Total:</span>{' '}
+            <strong>{items.length}</strong> vagas
+          </div>
         </div>
 
         {/* Board */}
         {isLoading ? (
-          <div className="flex justify-center py-20">
+          <div className="flex-1 flex items-center justify-center">
             <LoadingSpinner />
           </div>
         ) : items.length === 0 ? (
           <EmptyState
-            icon={<Calendar className="w-12 h-12" />}
-            title="Pipeline vazio"
-            description="Salve vagas na busca para começar a acompanhar."
-            action={
-              <Button onClick={() => (window.location.href = '/jobs')}>
-                Buscar Vagas
-              </Button>
-            }
+            icon={<Calendar className="w-12 h-12 text-gray-300" />}
+            title="Seu pipeline está vazio"
+            description="Salve vagas para começar a organizar seu processo."
+            action={<Button onClick={() => (window.location.href = '/jobs')}>Buscar Vagas</Button>}
           />
         ) : (
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragStart={(e) => setActiveId(e.active.id as string)}
+            onDragStart={e => setActiveId(e.active.id as string)}
             onDragEnd={handleDragEnd}
           >
-            <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
-              <div className="flex gap-4 h-full min-w-max px-1">
-                {PIPELINE_COLUMNS.map((column) => (
-                  <DroppableColumn key={column.id} column={column}>
-                    {getItemsByStatus(column.id).map((item) => (
-                      <DraggablePipelineCard
-                        key={item.id}
-                        item={item}
-                        onEdit={setEditingJob}
-                        onDelete={handleDelete}
-                      />
-                    ))}
-                  </DroppableColumn>
-                ))}
+            <div className="flex-1 overflow-hidden">
+              <div className="h-full overflow-x-auto overflow-y-hidden">
+                <div className="flex gap-4 h-full min-w-max px-1 py-1">
+                  {PIPELINE_COLUMNS.map(col => (
+                    <DroppableColumn key={col.id} column={col}>
+                      {getItemsByStatus(col.id).map(item => (
+                        <DraggablePipelineCard
+                          key={item.id}
+                          item={item}
+                          onEdit={setEditingJob}
+                          onDelete={handleDelete}
+                        />
+                      ))}
+                    </DroppableColumn>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* Overlay do Card enquanto arrasta */}
             <DragOverlay>
-              {activeItem ? (
-                <PipelineCard
-                  item={activeItem}
-                  onEdit={() => {}}
-                  onDelete={() => {}}
-                  isDragging
-                />
-              ) : null}
+              {activeItem && (
+                <div className="w-80">
+                  <PipelineCard item={activeItem} onEdit={() => {}} onDelete={() => {}} isDragging />
+                </div>
+              )}
             </DragOverlay>
           </DndContext>
         )}
 
-        {/* Modais */}
         {editingJob && (
           <EditJobModal
             job={editingJob}
             onClose={() => setEditingJob(null)}
-            onSave={handleUpdateJob}
+            onSave={handleUpdateNotes}
           />
         )}
       </div>
