@@ -1,11 +1,11 @@
 import { Controller, Post, Patch, Get, Param, Body } from "@nestjs/common";
-import { ApiTags, ApiOperation } from "@nestjs/swagger"; // 1. Imports Swagger
+import { ApiTags, ApiOperation } from "@nestjs/swagger"; 
 import { PipelineService } from "./pipeline.service";
 import { UpdateStatusDto } from "./dto/update-status.dto";
 import { AddNoteDto } from "./dto/add-note.dto";
 import { CreateSavedJobDto } from "./dto/create-saved-job.dto";
 
-@ApiTags("Pipeline") // 2. Agrupamento no Swagger
+@ApiTags("Pipeline") 
 @Controller("pipeline")
 export class PipelineController {
   constructor(private service: PipelineService) {}

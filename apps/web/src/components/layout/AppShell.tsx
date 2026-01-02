@@ -9,13 +9,15 @@ import {
   Menu,
   User,
   X,
+  CopyCheck,
   Trello,           // Pipeline
   LayoutDashboard,  // Dashboard
   FileText,         // Rascunhos
   Settings,         // Configurações
   Wifi,             // Online
   WifiOff,          // Offline
-  RefreshCw         // Loading/Retry
+  RefreshCw,        // Loading/Retry
+  Search            // Ícone para Vagas (NOVO)
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/Button';
@@ -31,8 +33,13 @@ const navItems = [
   },
   { 
     label: 'Vagas', 
-    icon: <Briefcase className="w-5 h-5" />, 
+    icon: <Search className="w-5 h-5" />, // Mudei para lupa (Search) que faz mais sentido
     href: '/jobs' 
+  },
+  { 
+    label: 'Minhas Candidaturas', 
+    icon: <CopyCheck className="w-5 h-5" />, 
+    href: '/applications' 
   },
   { 
     label: 'Pipeline', 
@@ -69,7 +76,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     setApiStatus('checking');
     try {
       // Tenta bater no endpoint de saúde da API
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3003';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
       const res = await fetch(`${apiUrl}/health`);
       if (res.ok) {
         setApiStatus('online');

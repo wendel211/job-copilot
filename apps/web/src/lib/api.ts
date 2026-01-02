@@ -1,7 +1,6 @@
 /**
  * SERVIÇO DE API - CLIENTE HTTP
- * 
- * Este arquivo centraliza todas as chamadas à API do backend.
+ * * Este arquivo centraliza todas as chamadas à API do backend.
  * Usamos axios para fazer requisições HTTP tipadas e organizadas.
  */
 
@@ -58,10 +57,22 @@ export interface Job {
   createdAt: string;
 }
 
+export type PipelineStage = 
+  | 'discovered' 
+  | 'prepared' 
+  | 'applied'    // Novo
+  | 'sent' 
+  | 'screening' 
+  | 'interview' 
+  | 'offer'      // Novo
+  | 'rejected'   // Novo
+  | 'closed';
+
 export interface SavedJob {
   id: string;
-  status: 'discovered' | 'prepared' | 'sent' | 'screening' | 'interview' | 'closed';
+  status: PipelineStage;
   notes: string | null;
+  appliedAt: string | null; // Novo campo
   job: Job;
   createdAt: string;
   updatedAt: string;
@@ -103,6 +114,14 @@ export const jobsApi = {
     const response = await apiClient.get('/jobs/search', { params });
     return response.data;
   },
+
+  /**
+   * Buscar detalhes de uma vaga específica
+   */
+  async getById(id: string): Promise<Job> {
+    const response = await apiClient.get(`/jobs/${id}`);
+    return response.data;
+  },
 };
 
 // ============================================================================
@@ -123,7 +142,7 @@ export const importApi = {
 // ============================================================================
 export const pipelineApi = {
   /**
-   * Listar vagas salvas do usuário
+   * Listar vagas salvas do usuário (Alias para getAll)
    */
   async list(userId: string): Promise<SavedJob[]> {
     const response = await apiClient.get(`/pipeline/user/${userId}`);
@@ -131,7 +150,14 @@ export const pipelineApi = {
   },
 
   /**
-   * Adicionar vaga ao pipeline
+   * Alias para list (usado na ApplicationsPage)
+   */
+  async getAll(userId: string): Promise<SavedJob[]> {
+    return this.list(userId);
+  },
+
+  /**
+   * Adicionar vaga ao pipeline (Salvar)
    */
   async create(userId: string, jobId: string): Promise<SavedJob> {
     const response = await apiClient.post('/pipeline', { userId, jobId });
@@ -141,7 +167,7 @@ export const pipelineApi = {
   /**
    * Atualizar status da vaga
    */
-  async updateStatus(itemId: string, status: SavedJob['status']): Promise<SavedJob> {
+  async updateStatus(itemId: string, status: string): Promise<SavedJob> {
     const response = await apiClient.patch(`/pipeline/${itemId}/status`, { status });
     return response.data;
   },
@@ -243,11 +269,4 @@ export const providersApi = {
 // ============================================================================
 // EXPORTAÇÃO DEFAULT
 // ============================================================================
-export default {
-  jobs: jobsApi,
-  import: importApi,
-  pipeline: pipelineApi,
-  drafts: draftsApi,
-  email: emailApi,
-  providers: providersApi,
-};
+export default apiClient; // Exporta a instância axios por padrão, caso precise acessar diretamente

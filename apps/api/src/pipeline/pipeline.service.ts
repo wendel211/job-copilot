@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException, ConflictException } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { UpdateStatusDto } from "./dto/update-status.dto";
 import { AddNoteDto } from "./dto/add-note.dto";
 import { CreateSavedJobDto } from "./dto/create-saved-job.dto";
 import { EventsService } from "../events/events.service";
 import { EventType } from "../events/enums/event-type.enum";
-import { SavedJobStatus } from "@prisma/client"; // 1. Importação necessária
+import { SavedJobStatus } from "@prisma/client"; 
 
 @Injectable()
 export class PipelineService {
@@ -27,21 +27,24 @@ export class PipelineService {
     });
     if (!job) throw new NotFoundException("Job not found");
 
-    // 3. Evitar duplicação
+    // 3. Verificar se já existe
     const exists = await this.prisma.savedJob.findUnique({
       where: { userId_jobId: { userId: dto.userId, jobId: dto.jobId } }
     });
 
+    // --- CORREÇÃO PRINCIPAL ---
+    // Se já existe, retornamos o objeto existente e NÃO lançamos erro.
+    // Isso permite que o frontend pegue o ID sem quebrar.
     if (exists) {
-      throw new ConflictException("Job already saved in pipeline");
+        return exists;
     }
 
-    // 4. Criar item
+    // 4. Criar item se não existir
     const saved = await this.prisma.savedJob.create({
       data: {
         userId: dto.userId,
         jobId: dto.jobId,
-        status: "discovered"
+        status: SavedJobStatus.discovered
       }
     });
 
@@ -61,9 +64,16 @@ export class PipelineService {
     const savedJob = await this.prisma.savedJob.findUnique({ where: { id } });
     if (!savedJob) throw new NotFoundException("Saved job not found");
 
+    const dataToUpdate: any = { status: dto.status };
+
+    // Se mudar para applied, atualiza a data
+    if (dto.status === SavedJobStatus.applied) {
+        dataToUpdate.appliedAt = new Date();
+    }
+
     const updated = await this.prisma.savedJob.update({
       where: { id },
-      data: { status: dto.status }
+      data: dataToUpdate
     });
 
     await this.events.register({
@@ -104,20 +114,22 @@ export class PipelineService {
     return this.prisma.savedJob.findMany({
       where: { userId },
       include: {
-        job: true,
+        job: {
+            include: {
+                company: true 
+            }
+        },
         events: true
       },
       orderBy: { updatedAt: "desc" }
     });
-  } // <--- 2. Faltava fechar esta chave do método listByUser
+  }
 
-  // 3. Método movido para o escopo correto da Classe
   async updateStatusByUserAndJob(
     userId: string,
     jobId: string,
     status: SavedJobStatus
   ) {
-    // Buscar o savedJob pela chave composta
     const saved = await this.prisma.savedJob.findUnique({
       where: {
         userId_jobId: { userId, jobId }
@@ -126,7 +138,6 @@ export class PipelineService {
 
     if (!saved) return null; 
 
-    // 4. Correção: Passar apenas o status, sem o userId
     return this.updateStatus(saved.id, {
       status
     });
