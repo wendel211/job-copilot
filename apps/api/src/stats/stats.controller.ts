@@ -1,15 +1,29 @@
 import { Controller, Get, Query } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiQuery } from "@nestjs/swagger"; // 1. Imports Swagger
+import { ApiTags, ApiOperation, ApiQuery } from "@nestjs/swagger";
 import { StatsService } from "./stats.service";
 
-@ApiTags("Stats") // 2. Agrupamento
+@ApiTags("Stats")
 @Controller("stats")
 export class StatsController {
   constructor(private readonly stats: StatsService) {}
 
+  // ===========================================================
+  // 🎯 DASHBOARD PRINCIPAL (Resumo)
+  // ===========================================================
+  @Get()
+  @ApiOperation({ summary: "Resumo do Dashboard: Cards de totais e Atividade Recente" })
+  @ApiQuery({ name: "userId", required: true, description: "ID do usuário logado" })
+  getSummary(@Query("userId") userId: string) {
+    return this.stats.getUserStats(userId);
+  }
+
+  // ===========================================================
+  // 📊 ANALYTICS DETALHADOS (Para gráficos futuros)
+  // ===========================================================
+
   @Get("emails-per-day")
-  @ApiOperation({ summary: "Volume de emails enviados por dia (últimos 30 dias)" })
-  @ApiQuery({ name: "userId", required: true, description: "ID do usuário para filtrar estatísticas" })
+  @ApiOperation({ summary: "Volume de emails enviados por dia" })
+  @ApiQuery({ name: "userId", required: true })
   emailsPerDay(@Query("userId") userId: string) {
     return this.stats.emailsPerDay(userId);
   }
@@ -29,7 +43,7 @@ export class StatsController {
   }
 
   @Get("pipeline-funnel")
-  @ApiOperation({ summary: "Funil do Pipeline (Descoberta > Aplicação > Entrevista)" })
+  @ApiOperation({ summary: "Funil do Pipeline (Status count)" })
   @ApiQuery({ name: "userId", required: true })
   pipelineFunnel(@Query("userId") userId: string) {
     return this.stats.pipelineFunnel(userId);

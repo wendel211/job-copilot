@@ -10,9 +10,74 @@ import {
 export class StatsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // -----------------------------------------------------------
+  async getUserStats(userId: string) {
+    // 1. Total Geral
+    const totalSaved = await this.prisma.savedJob.count({
+      where: { userId },
+    });
+
+    // 2. Rascunhos
+    const drafts = await this.prisma.emailDraft.count({
+      where: { userId },
+    });
+
+    // 3. Agrupamento por Status (Para preencher os cards coloridos)
+    const byStatus = await this.prisma.savedJob.groupBy({
+      by: ["status"],
+      where: { userId },
+      _count: { status: true },
+    });
+
+    // Função auxiliar para somar status (ex: applied + sent = candidaturas)
+    const getCount = (targetStatuses: string[]) => {
+      return byStatus
+        .filter((item) => targetStatuses.includes(item.status))
+        .reduce((acc, curr) => acc + curr._count.status, 0);
+    };
+
+    // 4. Últimas Atividades (Feed)
+    const recentActivity = await this.prisma.savedJob.findMany({
+      where: { userId },
+      take: 5,
+      orderBy: { updatedAt: "desc" },
+      include: {
+        job: {
+          select: {
+            title: true,
+            company: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    return {
+      overview: {
+        total: totalSaved,
+        // Consideramos 'applied' (manual) e 'sent' (email enviado) como candidaturas feitas
+        applied: getCount(["applied", "sent"]), 
+        // Consideramos screening e interview como processos de entrevista
+        interviews: getCount(["interview", "screening"]),
+        offers: getCount(["offer"]),
+        rejected: getCount(["rejected"]),
+        drafts: drafts,
+      },
+      recentActivity: recentActivity.map(activity => ({
+        id: activity.id,
+        status: activity.status,
+        updatedAt: activity.updatedAt,
+        job: {
+            title: activity.job.title,
+            company: { name: activity.job.company.name }
+        }
+      })),
+    };
+  }
+
+  // ===========================================================
+  // 📊 MÉTODOS ANALÍTICOS (MANTIDOS DO SEU CÓDIGO)
+  // ===========================================================
+
   // 1. Emails enviados por dia
-  // -----------------------------------------------------------
   async emailsPerDay(userId: string) {
     return this.prisma.emailSend.groupBy({
       by: ["submittedAt"],
@@ -27,9 +92,7 @@ export class StatsService {
     });
   }
 
-  // -----------------------------------------------------------
   // 2. Fail Rate de e-mails
-  // -----------------------------------------------------------
   async emailFailRate(userId: string) {
     const sent = await this.prisma.emailSend.count({
       where: { userId, status: EmailSendStatus.sent },
@@ -49,9 +112,7 @@ export class StatsService {
     };
   }
 
-  // -----------------------------------------------------------
-  // 3. Distribuição de ATS baseado nos SavedJobs
-  // -----------------------------------------------------------
+  // 3. Distribuição de ATS
   async atsDistribution(userId: string) {
     return this.prisma.job.groupBy({
       by: ["atsType"],
@@ -64,9 +125,7 @@ export class StatsService {
     });
   }
 
-  // -----------------------------------------------------------
-  // 4. Funil do Pipeline (quantas vagas em cada status)
-  // -----------------------------------------------------------
+  // 4. Funil do Pipeline
   async pipelineFunnel(userId: string) {
     const grouped = await this.prisma.savedJob.groupBy({
       by: ["status"],
@@ -74,7 +133,6 @@ export class StatsService {
       _count: true,
     });
 
-    // garante inclusão de todos os status possíveis
     const allStatuses = Object.values(SavedJobStatus);
 
     return allStatuses.map((s) => ({
@@ -83,9 +141,7 @@ export class StatsService {
     }));
   }
 
-  // -----------------------------------------------------------
-  // 5. Tempo médio entre "descobrir vaga" e "enviar e-mail"
-  // -----------------------------------------------------------
+  // 5. Tempo médio para envio
   async timeToSendEmail(userId: string) {
     const sends = await this.prisma.emailSend.findMany({
       where: {
@@ -113,11 +169,7 @@ export class StatsService {
     }
 
     if (times.length === 0) {
-      return {
-        avgMs: 0,
-        avgHours: 0,
-        avgDays: 0,
-      };
+      return { avgMs: 0, avgHours: 0, avgDays: 0 };
     }
 
     const avg = times.reduce((a, b) => a + b, 0) / times.length;
@@ -129,9 +181,7 @@ export class StatsService {
     };
   }
 
-  // -----------------------------------------------------------
-  // 6. Eventos por dia (qualquer tipo de evento)
-  // -----------------------------------------------------------
+  // 6. Eventos por dia
   async eventsPerDay(userId: string) {
     const rows = await this.prisma.event.groupBy({
       by: ["createdAt"],
@@ -148,43 +198,34 @@ export class StatsService {
     }));
   }
 
-  // -----------------------------------------------------------
-  // 7. Quantidade de eventos agrupados por tipo
-  // -----------------------------------------------------------
-async eventsByType(userId: string) {
-  return this.prisma.event.groupBy({
-    by: ["type"],
-    where: { userId },
-    _count: { type: true },
-    orderBy: {
-      _count: {
-        type: "desc"
-      }
-    }
-  });
-}
-  // -----------------------------------------------------------
-  // 8. Status mais comum no pipeline (insight rápido)
-  // -----------------------------------------------------------
+  // 7. Eventos por tipo
+  async eventsByType(userId: string) {
+    return this.prisma.event.groupBy({
+      by: ["type"],
+      where: { userId },
+      _count: { type: true },
+      orderBy: {
+        _count: {
+          type: "desc",
+        },
+      },
+    });
+  }
+
+  // 8. Status mais comum
   async mostCommonStatus(userId: string) {
     const funnel = await this.pipelineFunnel(userId);
-
     const max = funnel.reduce((a, b) => (b.count > a.count ? b : a), {
       status: "none",
       count: 0,
     });
-
     return max;
   }
 
-  // -----------------------------------------------------------
-  // 9. ATS mais frequente (insight rápido)
-  // -----------------------------------------------------------
+  // 9. ATS mais frequente
   async mostCommonATS(userId: string) {
     const dist = await this.atsDistribution(userId);
-
     if (!dist.length) return null;
-
     return dist.reduce((a, b) => (b._count > a._count ? b : a));
   }
 }

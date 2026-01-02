@@ -248,6 +248,13 @@ export const emailApi = {
   },
 };
 
+export const statsApi = {
+  async getSummary(userId: string) {
+    const { data } = await apiClient.get('/stats', { params: { userId } });
+    return data;
+  },
+};
+
 // ============================================================================
 // API - EMAIL PROVIDERS (Configuração SMTP)
 // ============================================================================
@@ -259,6 +266,7 @@ export const providersApi = {
     const response = await apiClient.get('/email/providers', { params: { userId } });
     return response.data;
   },
+
 
   /**
    * Criar novo provedor SMTP
@@ -296,4 +304,5 @@ export default {
   drafts: draftsApi,
   email: emailApi,
   providers: providersApi,
+  stats: statsApi,
 };
