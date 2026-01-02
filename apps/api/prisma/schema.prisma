@@ -62,6 +62,7 @@ enum EmailProviderType {
 // =======================
 model User {
   id          String  @id @default(cuid())
+  password    String
   email       String  @unique
   fullName    String?
   phone       String?
