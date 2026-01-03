@@ -10,6 +10,7 @@ generator client {
 // -------------------------------------------------------------
 datasource db {
   provider = "postgresql"
+
 }
 
 // -------------------------------------------------------------
@@ -33,11 +34,11 @@ enum SavedJobStatus {
   discovered // = SALVO (Padrão)
   prepared
   applied    // = JÁ ME CANDIDATEI (Novo)
-  sent       // = Email enviado pelo sistema
+  sent        // = Email enviado pelo sistema
   screening
   interview
-  offer      // = Proposta recebida
-  rejected   // = Rejeitado
+  offer       // = Proposta recebida
+  rejected    // = Rejeitado
   closed
 }
 
@@ -61,9 +62,9 @@ enum EmailProviderType {
 // USER
 // =======================
 model User {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   password    String
-  email       String  @unique
+  email       String   @unique
   fullName    String?
   phone       String?
   linkedinUrl String?
@@ -75,7 +76,7 @@ model User {
   savedJobs    SavedJob[]
   emailDrafts  EmailDraft[]
   emailSends   EmailSend[]
-  providers    EmailProviderConfig[]
+  providers    EmailProvider[] // Alterado aqui
   template     UserTemplate?
 
   events Event[] @relation("UserEvents")
@@ -85,8 +86,8 @@ model User {
 // USER TEMPLATE
 // =======================
 model UserTemplate {
-  id     String @id @default(cuid())
-  userId String @unique
+  id      String @id @default(cuid())
+  userId  String @unique
 
   baseIntro   String?
   baseBullets String?
@@ -109,7 +110,7 @@ model Company {
   website  String?
 
   // --- CAMPOS PARA O CRAWLER ---
-  atsProvider   AtsType?  // Ex: greenhouse, lever
+  atsProvider    AtsType?  // Ex: greenhouse, lever
   careerPageUrl String?   // Slug ou URL
   lastCrawledAt DateTime? // Data da última varredura
 
@@ -123,19 +124,19 @@ model Company {
 // JOB
 // =======================
 model Job {
-  id         String        @id @default(cuid())
+  id           String        @id @default(cuid())
   sourceType JobSourceType
   sourceKey  String?
   atsType    AtsType       @default(unknown)
 
-  title       String
-  location    String?
-  remote      Boolean  @default(false)
+  title        String
+  location     String?
+  remote       Boolean  @default(false)
   description String
-  applyUrl    String
-  postedAt    DateTime?
-  updatedAt   DateTime @updatedAt
-  createdAt   DateTime @default(now())
+  applyUrl     String
+  postedAt     DateTime?
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
 
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
@@ -154,13 +155,13 @@ model Job {
 // JOB REQUIREMENTS
 // =======================
 model JobRequirement {
-  id    String @id @default(cuid())
+  id     String @id @default(cuid())
   jobId String @unique
 
   job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
-  rawText   String?
-  skills    String[] @default([])
+  rawText    String?
+  skills     String[] @default([])
   seniority String?
   keywords  String[] @default([])
 
@@ -172,9 +173,9 @@ model JobRequirement {
 // SAVED JOB (PIPELINE)
 // =======================
 model SavedJob {
-  id     String         @id @default(cuid())
-  userId String
-  jobId  String
+  id          String          @id @default(cuid())
+  userId      String
+  jobId       String
   
   status SavedJobStatus @default(discovered)
   
@@ -201,15 +202,15 @@ model SavedJob {
 // EMAIL DRAFT
 // =======================
 model EmailDraft {
-  id     String  @id @default(cuid())
+  id      String  @id @default(cuid())
   userId String
   jobId  String?
 
-  subject     String
-  bodyText    String
-  toEmail     String?
+  subject      String
+  bodyText     String
+  toEmail      String?
   attachments String[] @default([])
-  checklist   String[] @default([])
+  checklist    String[] @default([])
 
   editorOpenedAt DateTime?
 
@@ -240,17 +241,17 @@ model EmailSend {
   status     EmailSendStatus @default(queued)
   error      String?
 
-  toEmail     String?
-  toDomain    String?
+  toEmail      String?
+  toDomain     String?
   submittedAt DateTime  @default(now())
   sentAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  draft    EmailDraft           @relation(fields: [draftId], references: [id], onDelete: Cascade)
-  provider EmailProviderConfig? @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  draft         EmailDraft            @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  provider EmailProvider? @relation(fields: [providerId], references: [id], onDelete: SetNull) // Alterado
 
   events Event[] @relation("SendEvents")
 
@@ -261,18 +262,18 @@ model EmailSend {
 }
 
 // =======================
-// EMAIL PROVIDER CONFIG
+// EMAIL PROVIDER (RENOMEADO)
 // =======================
-model EmailProviderConfig {
-  id       String            @id @default(cuid())
-  userId   String
-  type     EmailProviderType @default(smtp)
-  isActive Boolean           @default(true)
+model EmailProvider { // Era EmailProviderConfig
+  id             String             @id @default(cuid())
+  userId         String
+  type           EmailProviderType @default(smtp)
+  isActive Boolean            @default(true)
 
-  smtpHost    String?
-  smtpPort    Int?
-  smtpSecure  Boolean?
-  smtpUser    String?
+  smtpHost     String?
+  smtpPort     Int?
+  smtpSecure   Boolean?
+  smtpUser     String?
   smtpPassEnc String?
 
   fromEmail String?
@@ -284,7 +285,7 @@ model EmailProviderConfig {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   sends  EmailSend[]
-  events Event[]     @relation("ProviderEvents")
+  events Event[]      @relation("ProviderEvents")
 
   @@index([userId, type])
 }
@@ -297,21 +298,21 @@ model Event {
   type      String
   createdAt DateTime @default(now())
 
-  userId     String?
-  jobId      String?
-  draftId    String?
+  userId       String?
+  jobId        String?
+  draftId      String?
   providerId String?
-  sendId     String?
+  sendId       String?
   savedJobId String?
 
   metadata Json?
 
-  user     User?                @relation("UserEvents", fields: [userId], references: [id], onDelete: Cascade)
-  job      Job?                 @relation("JobEvents", fields: [jobId], references: [id])
-  draft    EmailDraft?          @relation("DraftEvents", fields: [draftId], references: [id])
-  provider EmailProviderConfig? @relation("ProviderEvents", fields: [providerId], references: [id])
-  send     EmailSend?           @relation("SendEvents", fields: [sendId], references: [id])
-  savedJob SavedJob?            @relation("SavedJobEvents", fields: [savedJobId], references: [id])
+  user      User?                 @relation("UserEvents", fields: [userId], references: [id], onDelete: Cascade)
+  job       Job?                  @relation("JobEvents", fields: [jobId], references: [id])
+  draft     EmailDraft?           @relation("DraftEvents", fields: [draftId], references: [id])
+  provider EmailProvider? @relation("ProviderEvents", fields: [providerId], references: [id]) // Alterado
+  send      EmailSend?            @relation("SendEvents", fields: [sendId], references: [id])
+  savedJob SavedJob?             @relation("SavedJobEvents", fields: [savedJobId], references: [id])
 
   @@index([type])
   @@index([createdAt])

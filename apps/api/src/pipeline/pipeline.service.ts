@@ -5,7 +5,7 @@ import { AddNoteDto } from "./dto/add-note.dto";
 import { CreateSavedJobDto } from "./dto/create-saved-job.dto";
 import { EventsService } from "../events/events.service";
 import { EventType } from "../events/enums/event-type.enum";
-import { SavedJobStatus } from "@prisma/client"; 
+import { SavedJobStatus } from "@prisma/client";
 
 @Injectable()
 export class PipelineService {
@@ -14,17 +14,16 @@ export class PipelineService {
     private events: EventsService
   ) {}
 
+  // ============================================================
+  // CRIAR OU RETORNAR EXISTENTE
+  // ============================================================
   async create(dto: CreateSavedJobDto) {
     // 1. Validar user
-    const user = await this.prisma.user.findUnique({
-      where: { id: dto.userId }
-    });
+    const user = await this.prisma.user.findUnique({ where: { id: dto.userId } });
     if (!user) throw new NotFoundException("User not found");
 
     // 2. Validar job
-    const job = await this.prisma.job.findUnique({
-      where: { id: dto.jobId }
-    });
+    const job = await this.prisma.job.findUnique({ where: { id: dto.jobId } });
     if (!job) throw new NotFoundException("Job not found");
 
     // 3. Verificar se já existe
@@ -32,14 +31,12 @@ export class PipelineService {
       where: { userId_jobId: { userId: dto.userId, jobId: dto.jobId } }
     });
 
-    // --- CORREÇÃO PRINCIPAL ---
-    // Se já existe, retornamos o objeto existente e NÃO lançamos erro.
-    // Isso permite que o frontend pegue o ID sem quebrar.
+    // Se já existe, retorna o existente (Idempotência)
     if (exists) {
         return exists;
     }
-
-    // 4. Criar item se não existir
+    
+    // 4. Criar item
     const saved = await this.prisma.savedJob.create({
       data: {
         userId: dto.userId,
@@ -60,14 +57,20 @@ export class PipelineService {
     return saved;
   }
 
+  // ============================================================
+  // ATUALIZAR STATUS (Pelo ID do Item)
+  // ============================================================
   async updateStatus(id: string, dto: UpdateStatusDto) {
     const savedJob = await this.prisma.savedJob.findUnique({ where: { id } });
     if (!savedJob) throw new NotFoundException("Saved job not found");
 
-    const dataToUpdate: any = { status: dto.status };
+    // Cast seguro para o Enum
+    const newStatus = dto.status as SavedJobStatus;
+
+    const dataToUpdate: any = { status: newStatus };
 
     // Se mudar para applied, atualiza a data
-    if (dto.status === SavedJobStatus.applied) {
+    if (newStatus === SavedJobStatus.applied) {
         dataToUpdate.appliedAt = new Date();
     }
 
@@ -83,13 +86,16 @@ export class PipelineService {
       savedJobId: id,
       metadata: {
         from: savedJob.status,
-        to: dto.status
+        to: newStatus
       }
     });
 
     return updated;
   }
 
+  // ============================================================
+  // ADICIONAR NOTA
+  // ============================================================
   async addNote(id: string, dto: AddNoteDto) {
     const savedJob = await this.prisma.savedJob.findUnique({ where: { id } });
     if (!savedJob) throw new NotFoundException("Saved job not found");
@@ -110,6 +116,9 @@ export class PipelineService {
     return updated;
   }
 
+  // ============================================================
+  // LISTAR TUDO DO USUÁRIO
+  // ============================================================
   async listByUser(userId: string) {
     return this.prisma.savedJob.findMany({
       where: { userId },
@@ -124,22 +133,37 @@ export class PipelineService {
       orderBy: { updatedAt: "desc" }
     });
   }
+  
+  // ============================================================
+  // REMOVER (Desalvar)
+  // ============================================================
+  async delete(id: string) {
+    const exists = await this.prisma.savedJob.findUnique({ where: { id } });
+    if (!exists) throw new NotFoundException("Item not found");
+
+    await this.prisma.savedJob.delete({ where: { id } });
+    
+    return { success: true };
+  }
 
   async updateStatusByUserAndJob(
     userId: string,
     jobId: string,
-    status: SavedJobStatus
+    status: string | SavedJobStatus 
   ) {
-    const saved = await this.prisma.savedJob.findUnique({
+    // 1. Busca existente
+    let saved = await this.prisma.savedJob.findUnique({
       where: {
         userId_jobId: { userId, jobId }
       }
     });
 
-    if (!saved) return null; 
+    if (!saved) {
+       saved = await this.create({ userId, jobId });
+    }
 
     return this.updateStatus(saved.id, {
-      status
+      status: status as SavedJobStatus
     });
   }
 }
