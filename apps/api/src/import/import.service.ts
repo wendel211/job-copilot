@@ -19,7 +19,7 @@ import { fetchDynamicHtml } from "./utils/playwright-fallback";
 import { EventsService } from "../events/events.service";
 import { EventType } from "../events/enums/event-type.enum";
 
-import { JobSourceType, SavedJob } from "@prisma/client";
+import { JobSourceType } from "@prisma/client";
 
 @Injectable()
 export class ImportService {
@@ -101,7 +101,7 @@ export class ImportService {
         remote: jobData.remote ?? false,
         location: jobData.location ?? null,
         applyUrl: jobData.applyUrl,
-        companyId: company.id, // ← RELAÇÃO CORRETA
+        companyId: company.id,
         postedAt: jobData.postedAt,
       },
       update: {
@@ -116,17 +116,10 @@ export class ImportService {
     });
 
     // ------------------------------------------------------------
-    // 6. Criar SavedJob se userId estiver presente
+    // 6. [REMOVIDO] Criar SavedJob Automático
     // ------------------------------------------------------------
-    let savedJob: SavedJob | null = null;
-
-    if (dto.userId) {
-      savedJob = await this.prisma.savedJob.upsert({
-        where: { userId_jobId: { userId: dto.userId, jobId: job.id } },
-        create: { userId: dto.userId, jobId: job.id },
-        update: {},
-      });
-    }
+    // Alteração: Não criamos mais o SavedJob aqui.
+    // O usuário deve clicar explicitamente em "Salvar" ou "Já Apliquei" no frontend.
 
     // ------------------------------------------------------------
     // 7. Registrar evento JOB_IMPORTED
@@ -135,7 +128,7 @@ export class ImportService {
       type: EventType.JOB_IMPORTED,
       userId: dto.userId ?? null,
       jobId: job.id,
-      savedJobId: savedJob?.id ?? null,
+      savedJobId: null, // Agora é null pois não foi salvo no pipeline ainda
       metadata: {
         url: dto.url,
         ats,

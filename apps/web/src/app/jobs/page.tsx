@@ -176,9 +176,7 @@ const ImportModal = ({ isOpen, onClose, onImport, isLoading }: any) => {
   );
 };
 
-// ============================================================================
-// JOBS PAGE (PRINCIPAL)
-// ============================================================================
+
 export default function JobsPage() {
   const { userId } = useAppStore();
   
