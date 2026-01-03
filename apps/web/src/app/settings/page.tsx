@@ -202,15 +202,18 @@ export default function SettingsPage() {
     }
   };
 
-  const handleDelete = async (providerId: string) => {
-    if (!confirm('Remover este provedor?')) return;
+const handleDelete = async (providerId: string) => {
+    if (!confirm('Tem certeza que deseja remover este provedor de e-mail?')) return;
 
     try {
-      // TODO: Adicionar endpoint de delete
+      await providersApi.delete(providerId);
+      
       setProviders((prev) => prev.filter((p) => p.id !== providerId));
-      alert('Provedor removido!');
+      
+      alert('Provedor removido com sucesso!');
     } catch (error) {
       console.error('Erro ao remover:', error);
+      alert('Erro ao remover o provedor. Tente novamente.');
     }
   };
 

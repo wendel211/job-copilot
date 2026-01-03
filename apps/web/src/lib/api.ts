@@ -6,9 +6,6 @@
 
 import axios from 'axios';
 
-// ============================================================================
-// CONFIGURAÇÃO BASE
-// ============================================================================
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3003';
 
 const apiClient = axios.create({
@@ -37,10 +34,6 @@ if (process.env.NODE_ENV === 'development') {
     }
   );
 }
-
-// ============================================================================
-// TIPOS (TypeScript)
-// ============================================================================
 export interface Job {
   id: string;
   title: string;
@@ -97,7 +90,7 @@ export interface EmailProvider {
 }
 
 // ============================================================================
-// 1. API - AUTH (LOGIN & REGISTRO) - <--- ADICIONADO
+// 1. API - AUTH (LOGIN & REGISTRO)
 // ============================================================================
 export const authApi = {
   /**
@@ -200,6 +193,14 @@ export const pipelineApi = {
     const response = await apiClient.patch(`/pipeline/${itemId}/note`, { note });
     return response.data;
   },
+
+  /**
+   * Remover vaga do pipeline (Desalvar)
+   */
+  async delete(itemId: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete(`/pipeline/${itemId}`);
+    return response.data;
+  },
 };
 
 // ============================================================================
@@ -240,12 +241,20 @@ export const draftsApi = {
 // ============================================================================
 export const emailApi = {
   /**
-   * Enviar email
+   * Enviar email real via SMTP (Envio Direto - JobCopilot)
    */
-  async send(userId: string, draftId: string): Promise<{ send: any }> {
-    const response = await apiClient.post('/email/send', { userId, draftId });
+  async send(userId: string, data: { subject: string; body: string; to: string; jobId?: string }): Promise<{ success: boolean; messageId: string }> {
+    const response = await apiClient.post('/email/send', { userId, ...data });
     return response.data;
   },
+
+  /**
+   * Enviar rascunho salvo (Envio de Draft)
+   */
+  async sendDraft(userId: string, draftId: string): Promise<{ success: boolean; messageId: string }> {
+    const response = await apiClient.post('/email/send/draft', { userId, draftId });
+    return response.data;
+  }
 };
 
 export const statsApi = {
@@ -266,7 +275,6 @@ export const providersApi = {
     const response = await apiClient.get('/email/providers', { params: { userId } });
     return response.data;
   },
-
 
   /**
    * Criar novo provedor SMTP
@@ -293,6 +301,12 @@ export const providersApi = {
     const response = await apiClient.post(`/email/providers/${providerId}/test`);
     return response.data;
   },
+
+  async delete(providerId: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete(`/email/providers/${providerId}`);
+    return response.data;
+  },
+  
 };
 
 

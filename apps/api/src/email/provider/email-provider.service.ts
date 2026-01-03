@@ -75,12 +75,19 @@ export class EmailProviderService {
     });
   }
 
+  // --- NOVO MÉTODO DELETE ---
+  async delete(id: string) {
+    const provider = await this.prisma.emailProvider.findUnique({ where: { id } });
+    if (!provider) throw new NotFoundException("Provider not found");
+
+    await this.prisma.emailProvider.delete({ where: { id } });
+    return { success: true };
+  }
+
   async test(id: string) {
     const provider = await this.prisma.emailProvider.findUnique({ where: { id } });
     if (!provider) throw new NotFoundException("Provider not found");
 
-    // CORREÇÃO DO ERRO AQUI:
-    // Verificamos se smtpPassEnc existe antes de descriptografar.
     if (!provider.smtpPassEnc) {
         return { ok: false, error: "Senha SMTP não configurada neste provedor." };
     }
@@ -105,13 +112,12 @@ export class EmailProviderService {
       return { ok: false, error: error.message };
     }
   }
-
+  
   async getActiveProvider(userId: string) {
     const provider = await this.prisma.emailProvider.findFirst({
       where: { userId, isActive: true },
     });
     
-    // CORREÇÃO DO ERRO AQUI TAMBÉM:
     if (provider && provider.smtpPassEnc) {
         provider.smtpPassEnc = encryption.decrypt(provider.smtpPassEnc);
     }
