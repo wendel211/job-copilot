@@ -34,6 +34,10 @@ if (process.env.NODE_ENV === 'development') {
     }
   );
 }
+
+// ============================================================================
+// TIPOS (TypeScript)
+// ============================================================================
 export interface Job {
   id: string;
   title: string;
@@ -53,19 +57,19 @@ export interface Job {
 export type PipelineStage = 
   | 'discovered' 
   | 'prepared' 
-  | 'applied'    // Novo
+  | 'applied'    
   | 'sent' 
   | 'screening' 
   | 'interview' 
-  | 'offer'      // Novo
-  | 'rejected'   // Novo
+  | 'offer'      
+  | 'rejected'   
   | 'closed';
 
 export interface SavedJob {
   id: string;
   status: PipelineStage;
   notes: string | null;
-  appliedAt: string | null; // Novo campo
+  appliedAt: string | null; 
   job: Job;
   createdAt: string;
   updatedAt: string;
@@ -234,6 +238,14 @@ export const draftsApi = {
     const response = await apiClient.patch(`/email/drafts/${draftId}`, { userId, ...data });
     return response.data;
   },
+
+  /**
+   * Excluir rascunho
+   */
+  async delete(draftId: string, userId: string): Promise<{ success: boolean }> {
+    const response = await apiClient.delete(`/email/drafts/${draftId}`, { params: { userId } });
+    return response.data;
+  },
 };
 
 // ============================================================================
@@ -302,11 +314,13 @@ export const providersApi = {
     return response.data;
   },
 
+  /**
+   * Remover provedor
+   */
   async delete(providerId: string): Promise<{ success: boolean }> {
     const response = await apiClient.delete(`/email/providers/${providerId}`);
     return response.data;
   },
-  
 };
 
 

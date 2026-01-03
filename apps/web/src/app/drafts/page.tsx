@@ -14,11 +14,9 @@ import {
   Send,
   Edit3,
   Trash2,
-  Eye,
   Building2,
   Calendar,
   CheckCircle2,
-  XCircle,
 } from 'lucide-react';
 import { draftsApi, emailApi, type EmailDraft } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
@@ -197,9 +195,7 @@ const DraftEditor = ({ draft, isOpen, onClose, onSave, isSaving }: DraftEditorPr
             value={bodyText}
             onChange={(e) => setBodyText(e.target.value)}
             rows={12}
-            placeholder="Olá,
-
-Venho por meio deste email..."
+            placeholder="Olá,&#10;&#10;Venho por meio deste email..."
           />
 
           {/* Actions */}
@@ -260,7 +256,15 @@ export default function DraftsPage() {
 
     try {
       setIsSaving(true);
-      await draftsApi.update(selectedDraft.id, userId, updates);
+      
+      // --- CORREÇÃO APLICADA AQUI ---
+      // Mapeamos os campos explicitamente e convertemos null para undefined
+      await draftsApi.update(selectedDraft.id, userId, {
+        subject: updates.subject,
+        bodyText: updates.bodyText,
+        toEmail: updates.toEmail ?? undefined, // '?? undefined' resolve o erro de tipo 'null'
+      });
+
       await loadDrafts();
       setSelectedDraft(null);
       alert('Rascunho atualizado!');
@@ -283,7 +287,8 @@ export default function DraftsPage() {
 
     try {
       setSendingDraftId(draftId);
-      await emailApi.send(userId, draftId);
+      await emailApi.sendDraft(userId, draftId);
+      
       alert('Email enviado com sucesso! ✓');
       await loadDrafts();
     } catch (error) {
@@ -295,14 +300,17 @@ export default function DraftsPage() {
   };
 
   const handleDeleteDraft = async (draftId: string) => {
-    if (!confirm('Excluir este rascunho?')) return;
+    if (!confirm('Excluir este rascunho permanentemente?')) return;
 
     try {
-      // TODO: Adicionar endpoint de delete
+      await draftsApi.delete(draftId, userId);
+      
+      // Atualiza estado local
       setDrafts((prev) => prev.filter((d) => d.id !== draftId));
       alert('Rascunho excluído!');
     } catch (error) {
       console.error('Erro ao excluir:', error);
+      alert('Erro ao excluir rascunho.');
     }
   };
 

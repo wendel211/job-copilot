@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete, // <--- Importado
   Get,
   Param,
   Patch,
@@ -39,10 +40,12 @@ export class EmailDraftController {
   @ApiOperation({ summary: "Atualizar conteúdo do rascunho" })
   update(
     @Param("id") id: string,
-    @Body("userId") userId: string,
+    @Body("userId") userId: string, 
     @Body() dto: UpdateDraftDto
   ) {
-    return this.service.updateDraft(userId, id, dto);
+    // Fallback se o userId não vier no body do DTO
+    const uid = userId || (dto as any).userId; 
+    return this.service.updateDraft(uid, id, dto);
   }
 
   @Patch(":id/checklist")
@@ -53,5 +56,13 @@ export class EmailDraftController {
     @Body("item") item: string,
   ) {
     return this.service.toggleChecklist(userId, id, item);
+  }
+
+  
+  @Delete(":id")
+  @ApiOperation({ summary: "Excluir rascunho permanentemente" })
+  @ApiQuery({ name: "userId", required: true })
+  delete(@Param("id") id: string, @Query("userId") userId: string) {
+    return this.service.deleteDraft(userId, id);
   }
 }
