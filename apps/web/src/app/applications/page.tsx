@@ -136,7 +136,7 @@ export default function ApplicationsPage() {
               Utilize o <strong>JobCopilot</strong> nas páginas de vagas para gerar emails e clique em "Já me candidatei" para rastrear seu progresso aqui.
             </p>
             <Link href="/jobs">
-              <Button size="lg" className="shadow-lg shadow-blue-500/20">
+              <Button size="lg" className="flex justify-center tems-center  shadow-lg shadow-blue-500/20">
                 Explorar Vagas
               </Button>
             </Link>

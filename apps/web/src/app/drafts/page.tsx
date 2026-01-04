@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation'; 
 import AppShell from '@/components/layout/AppShell';
 import { Card, CardHeader, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -228,6 +229,7 @@ const DraftEditor = ({ draft, isOpen, onClose, onSave, isSaving }: DraftEditorPr
 // DRAFTS PAGE
 // ============================================================================
 export default function DraftsPage() {
+  const router = useRouter(); // <--- 2. Instanciar router
   const { userId } = useAppStore();
   const [drafts, setDrafts] = useState<EmailDraft[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -256,13 +258,10 @@ export default function DraftsPage() {
 
     try {
       setIsSaving(true);
-      
-      // --- CORREÇÃO APLICADA AQUI ---
-      // Mapeamos os campos explicitamente e convertemos null para undefined
       await draftsApi.update(selectedDraft.id, userId, {
         subject: updates.subject,
         bodyText: updates.bodyText,
-        toEmail: updates.toEmail ?? undefined, // '?? undefined' resolve o erro de tipo 'null'
+        toEmail: updates.toEmail ?? undefined,
       });
 
       await loadDrafts();
@@ -288,7 +287,6 @@ export default function DraftsPage() {
     try {
       setSendingDraftId(draftId);
       await emailApi.sendDraft(userId, draftId);
-      
       alert('Email enviado com sucesso! ✓');
       await loadDrafts();
     } catch (error) {
@@ -304,8 +302,6 @@ export default function DraftsPage() {
 
     try {
       await draftsApi.delete(draftId, userId);
-      
-      // Atualiza estado local
       setDrafts((prev) => prev.filter((d) => d.id !== draftId));
       alert('Rascunho excluído!');
     } catch (error) {
@@ -352,7 +348,8 @@ export default function DraftsPage() {
             title="Nenhum rascunho ainda"
             description="Rascunhos são gerados automaticamente ao salvar vagas"
             action={
-              <Button onClick={() => window.location.href = '/jobs'}>
+              // CORREÇÃO AQUI: Usar router.push em vez de window.location.href
+              <Button onClick={() => router.push('/jobs')}>
                 <Mail className="w-4 h-4" />
                 Buscar Vagas
               </Button>
