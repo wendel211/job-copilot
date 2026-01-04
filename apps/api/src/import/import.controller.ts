@@ -1,7 +1,7 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from "@nestjs/common";
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
 import { ImportService } from "./import.service";
-import { CrawlerService } from "./crawler.service"; // <--- Importe o CrawlerService
+import { CrawlerService } from "./crawler.service"; 
 import { ImportJobDto } from "../jobs/dto/import-job.dto";
 
 @ApiTags("Import")
@@ -9,9 +9,10 @@ import { ImportJobDto } from "../jobs/dto/import-job.dto";
 export class ImportController {
   constructor(
     private readonly importService: ImportService,
-    private readonly crawlerService: CrawlerService // <--- Injete aqui
+    private readonly crawlerService: CrawlerService 
   ) {}
 
+  // 1. Importação Manual (Link específico)
   @Post("link")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Importar vaga via Link (LinkedIn, Gupy, etc)" })
@@ -25,16 +26,29 @@ export class ImportController {
     };
   }
 
-
+  // 2. Crawler de ATS (Empresas específicas cadastradas: Nubank, Netflix...)
   @Post("crawl")
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: "Disparar Crawler de Empresas (Nível 2)" })
-  async runCrawler() {
+  @ApiOperation({ summary: "Disparar Crawler de Empresas ATS (Nível 2)" })
+  async runAtsCrawler() {
     const result = await this.crawlerService.crawlAllCompanies();
     
     return {
       success: true,
       ...result,
+    };
+  }
+
+  @Post("crawler/run")
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: "Disparar Crawler Zero-Cost (Adzuna, Remotive, Programathor)" })
+  async runDiscoveryCrawler() {
+
+    this.crawlerService.runManual(); 
+    
+    return { 
+      message: "Crawler de descoberta iniciado em background! Verifique os logs do terminal.",
+      sources: ["Adzuna", "Remotive", "Programathor"]
     };
   }
 }
