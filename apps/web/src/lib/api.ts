@@ -19,7 +19,6 @@ export const apiClient = axios.create({
 // Interceptor para logging (desenvolvimento)
 if (process.env.NODE_ENV === 'development') {
   apiClient.interceptors.request.use((config) => {
-    // console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     return config;
   });
 
@@ -36,9 +35,9 @@ if (process.env.NODE_ENV === 'development') {
 // TIPOS (TypeScript)
 // ============================================================================
 export interface Company {
-    id: string;
-    name: string;
-    website: string | null;
+  id: string;
+  name: string;
+  website: string | null;
 }
 
 export interface Job {
@@ -49,21 +48,30 @@ export interface Job {
   description: string;
   applyUrl: string;
   atsType: string;
-  // Adicionado para suportar os filtros visuais
   sourceType: 'manual' | 'linkedin' | 'adzuna' | 'programathor' | 'remotive' | 'gupy' | 'greenhouse' | 'lever';
   company: Company;
   createdAt: string;
 }
 
-// Adicionado para suportar a paginação do JobsPage
 export interface PaginatedResponse<T> {
-    data: T[];
-    meta: {
-      total: number;
-      page: number;
-      lastPage: number;
-      limit: number;
-    };
+  data: T[];
+  meta: {
+    total: number;
+    page: number;
+    lastPage: number;
+    limit: number;
+  };
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  headline?: string;
+  bio?: string;
+  skills: string[];
+  linkedinUrl?: string;
+  resumeUrl?: string;
 }
 
 export type PipelineStage = 
@@ -121,27 +129,58 @@ export const authApi = {
 };
 
 // ============================================================================
+// 2. API - USER PROFILE (NOVO)
+// ============================================================================
+export const userApi = {
+  /**
+   * Buscar perfil do usuário logado
+   */
+  getProfile: async () => {
+    const { data } = await apiClient.get<UserProfile>('/users/profile');
+    return data;
+  },
+
+  /**
+   * Atualizar dados do perfil (Skills, Bio, etc)
+   */
+  updateProfile: async (data: Partial<UserProfile>) => {
+    const response = await apiClient.patch('/users/profile', data);
+    return response.data;
+  },
+
+  /**
+   * Upload de Currículo (PDF)
+   */
+  uploadResume: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // O browser seta automaticamente o boundary do multipart/form-data
+    const response = await apiClient.post('/users/resume', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  }
+};
+
+// ============================================================================
 // API - JOBS (Busca de Vagas)
 // ============================================================================
 export const jobsApi = {
-  /**
-   * Buscar vagas com filtros e paginação
-   */
   async search(params?: {
     page?: number;
     q?: string;
     company?: string;
     remote?: boolean;
     atsType?: string;
-    source?: string; // Filtro de fonte
+    source?: string;
     take?: number;
-  }): Promise<PaginatedResponse<Job>> { // Retorna estrutura paginada
-    // Se o backend ainda retornar array direto em alguns casos, o frontend deve tratar,
-    // mas aqui tipamos como PaginatedResponse conforme a atualização do Controller.
+  }): Promise<PaginatedResponse<Job>> { 
     const response = await apiClient.get('/jobs', { 
         params: {
             page: params?.page,
-            search: params?.q,
+            q: params?.q, // CORREÇÃO: Backend espera 'q', não 'search'
+            company: params?.company,
             remote: params?.remote,
             atsType: params?.atsType,
             source: params?.source,
@@ -151,17 +190,11 @@ export const jobsApi = {
     return response.data;
   },
 
-  /**
-   * Buscar detalhes de uma vaga específica
-   */
   async getById(id: string): Promise<Job> {
     const response = await apiClient.get(`/jobs/${id}`);
     return response.data;
   },
 
-  /**
-   * Buscar recomendações (Sugestões)
-   */
   async getRecommendations(): Promise<Job[]> {
     const response = await apiClient.get('/jobs/recommendations');
     return response.data;
@@ -172,12 +205,9 @@ export const jobsApi = {
 // API - AI (Inteligência Artificial / Match)
 // ============================================================================
 export const aiApi = {
-    /**
-     * Calcular match entre usuário e vaga
-     */
     async analyzeMatch(userId: string, jobId: string) {
         const { data } = await apiClient.post('/ai/match', { userId, jobId });
-        return data; // { score, foundSkills, analysis }
+        return data;
     }
 };
 
@@ -313,6 +343,7 @@ export const providersApi = {
 
 export default {
   auth: authApi,
+  user: userApi, 
   jobs: jobsApi,
   ai: aiApi, 
   import: importApi,

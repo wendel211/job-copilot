@@ -10,6 +10,7 @@ generator client {
 // -------------------------------------------------------------
 datasource db {
   provider = "postgresql"
+
 }
 
 // -------------------------------------------------------------
@@ -23,7 +24,7 @@ enum AtsType {
   unknown
 }
 
-// ATUALIZADO: Fontes do Crawler adicionadas
+// Fontes do Crawler
 enum JobSourceType {
   manual
   linkedin
@@ -31,9 +32,9 @@ enum JobSourceType {
   greenhouse
   lever
   workday
-  adzuna       // <--- Novo (Camada 1)
-  programathor // <--- Novo (Camada 2)
-  remotive     // <--- Novo (Camada 1 - Extra)
+  adzuna       // <--- Novo
+  programathor // <--- Novo
+  remotive     // <--- Novo
 }
 
 enum SavedJobStatus {
@@ -68,22 +69,35 @@ enum EmailProviderType {
 // USER
 // =======================
 model User {
-  id          String   @id @default(cuid())
-  password    String
-  email       String   @unique
-  fullName    String?
-  phone       String?
-  linkedinUrl String?
-  githubUrl   String?
+  id            String   @id @default(cuid())
+  password      String
+  email         String   @unique
+  fullName      String?
+  phone         String?
+  linkedinUrl   String?
+  githubUrl     String?
+
+  // --- NOVOS CAMPOS DE PERFIL (ADICIONADOS PARA A PÁGINA SETTINGS) ---
+  headline      String?   // Ex: Senior React Developer
+  bio           String?   // Resumo profissional
+  skills        String[]  // Array: ["React", "Node", "AWS"]
+  portfolioUrl  String?
+  
+  // Preferências de Vaga (JSON flexível)
+  jobPreferences Json?    // { "remote": true, "salary": 5000 }
+
+  // Caminho do PDF do Currículo
+  resumeUrl     String?
+  // -------------------------------------------------------------------
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  savedJobs   SavedJob[]
-  emailDrafts EmailDraft[]
-  emailSends  EmailSend[]
-  providers   EmailProvider[] 
-  template    UserTemplate?
+  savedJobs     SavedJob[]
+  emailDrafts   EmailDraft[]
+  emailSends    EmailSend[]
+  providers     EmailProvider[] 
+  template      UserTemplate?
 
   events Event[] @relation("UserEvents")
 }
@@ -130,28 +144,28 @@ model Company {
 // JOB
 // =======================
 model Job {
-  id            String        @id @default(cuid())
-  
+  id             String        @id @default(cuid())
+   
   // Identificação da Fonte (Importante para o Crawler)
-  sourceType    JobSourceType @default(manual)
-  sourceKey     String?       // ID único na origem (ex: ID do Adzuna)
-  atsType       AtsType       @default(unknown)
+  sourceType     JobSourceType @default(manual)
+  sourceKey      String?       // ID único na origem (ex: ID do Adzuna)
+  atsType        AtsType       @default(unknown)
 
-  title         String
-  location      String?
-  remote        Boolean  @default(false)
-  description   String
-  applyUrl      String
-  postedAt      DateTime?
-  updatedAt     DateTime @updatedAt
-  createdAt     DateTime @default(now())
+  title          String
+  location       String?
+  remote         Boolean  @default(false)
+  description    String
+  applyUrl       String
+  postedAt       DateTime?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
 
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 
   requirements JobRequirement?
-  savedJobs    SavedJob[]
-  emailDrafts  EmailDraft[]
+  savedJobs     SavedJob[]
+  emailDrafts   EmailDraft[]
 
   events Event[] @relation("JobEvents")
 
@@ -164,8 +178,8 @@ model Job {
 // JOB REQUIREMENTS
 // =======================
 model JobRequirement {
-  id      String @id @default(cuid())
-  jobId   String @unique
+  id       String @id @default(cuid())
+  jobId    String @unique
 
   job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
 
@@ -185,11 +199,11 @@ model SavedJob {
   id          String          @id @default(cuid())
   userId      String
   jobId       String
-   
+    
   status      SavedJobStatus  @default(discovered)
-   
+    
   appliedAt   DateTime? 
-   
+    
   notes       String?
 
   createdAt DateTime @default(now())
@@ -273,19 +287,19 @@ model EmailSend {
 // EMAIL PROVIDER
 // =======================
 model EmailProvider {
-  id             String             @id @default(cuid())
-  userId         String
-  type           EmailProviderType  @default(smtp)
-  isActive       Boolean            @default(true)
+  id              String              @id @default(cuid())
+  userId          String
+  type            EmailProviderType   @default(smtp)
+  isActive        Boolean             @default(true)
 
-  smtpHost       String?
-  smtpPort       Int?
-  smtpSecure     Boolean?
-  smtpUser       String?
-  smtpPassEnc    String?
+  smtpHost        String?
+  smtpPort        Int?
+  smtpSecure      Boolean?
+  smtpUser        String?
+  smtpPassEnc     String?
 
-  fromEmail      String?
-  fromName       String?
+  fromEmail       String?
+  fromName        String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -306,21 +320,21 @@ model Event {
   type      String
   createdAt DateTime @default(now())
 
-  userId       String?
-  jobId        String?
-  draftId      String?
-  providerId   String?
-  sendId       String?
-  savedJobId   String?
+  userId        String?
+  jobId         String?
+  draftId       String?
+  providerId    String?
+  sendId        String?
+  savedJobId    String?
 
   metadata Json?
 
-  user      User?                  @relation("UserEvents", fields: [userId], references: [id], onDelete: Cascade)
-  job       Job?                   @relation("JobEvents", fields: [jobId], references: [id])
-  draft     EmailDraft?            @relation("DraftEvents", fields: [draftId], references: [id])
-  provider  EmailProvider?         @relation("ProviderEvents", fields: [providerId], references: [id])
-  send      EmailSend?             @relation("SendEvents", fields: [sendId], references: [id])
-  savedJob  SavedJob?              @relation("SavedJobEvents", fields: [savedJobId], references: [id])
+  user       User?                  @relation("UserEvents", fields: [userId], references: [id], onDelete: Cascade)
+  job        Job?                   @relation("JobEvents", fields: [jobId], references: [id])
+  draft      EmailDraft?            @relation("DraftEvents", fields: [draftId], references: [id])
+  provider   EmailProvider?         @relation("ProviderEvents", fields: [providerId], references: [id])
+  send       EmailSend?             @relation("SendEvents", fields: [sendId], references: [id])
+  savedJob   SavedJob?              @relation("SavedJobEvents", fields: [savedJobId], references: [id])
 
   @@index([type])
   @@index([createdAt])

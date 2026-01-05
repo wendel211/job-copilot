@@ -16,6 +16,8 @@ import { EventsModule } from "./events/events.module";
 import { StatsModule } from "./stats/stats.module";
 import { AuthModule } from "./auth/auth.module";
 
+import { UsersModule } from "./users/users.module";
+
 @Module({
   imports: [
   
@@ -27,6 +29,8 @@ import { AuthModule } from "./auth/auth.module";
 
     // Autenticação (Login/Registro)
     AuthModule, 
+
+    UsersModule,
 
     // Domínio
     JobsModule,
