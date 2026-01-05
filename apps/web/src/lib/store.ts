@@ -1,7 +1,7 @@
 /**
  * STORE GLOBAL - ZUSTAND
  * * Gerenciamento de estado centralizado.
- * Atualizado para suportar fluxo de Login/Logout real.
+ * Atualizado para suportar fluxo de Login/Logout com JWT Token.
  */
 
 import { create } from 'zustand';
@@ -19,11 +19,15 @@ export interface User {
 }
 
 interface AppState {
-  // ====== USER ======
+  // ====== AUTH STATE (Novo) ======
   userId: string;
-  setUserId: (id: string) => void;
   user: User | null;
-  setUser: (user: User | null) => void;
+  token: string | null;      // <--- O Token JWT fica aqui
+  isAuthenticated: boolean;
+  
+  // Actions de Auth
+  setAuth: (data: { user: User; access_token: string }) => void; // <--- Chamado no Login
+  setUser: (user: User | null) => void; // Chamado ao atualizar perfil
   logout: () => void;
   
   // ====== JOBS ======
@@ -58,9 +62,10 @@ export const useAppStore = create<AppState>()(
   persist(
     (set) => ({
       // ====== VALORES INICIAIS ======
-      // Começamos deslogados (vazios) para forçar o usuário a fazer Login
       userId: '', 
       user: null,
+      token: null,
+      isAuthenticated: false,
 
       jobs: [],
       pipeline: [],
@@ -69,25 +74,36 @@ export const useAppStore = create<AppState>()(
       currentView: 'dashboard',
       isLoading: false,
 
-      // ====== ACTIONS: USER ======
-      setUserId: (id) => set({ userId: id }),
+      // ====== ACTIONS: AUTH ======
       
+      // Chamado no Login com sucesso: Salva Token + User
+      setAuth: (data) => set({ 
+        user: data.user, 
+        userId: data.user.id, 
+        token: data.access_token, 
+        isAuthenticated: true 
+      }),
+
+      // Chamado apenas para atualizar dados do perfil (sem mudar token)
       setUser: (user) => set({ 
         user, 
-        userId: user ? user.id : '' // Garante sincronia entre user e userId
+        userId: user ? user.id : '' 
       }),
       
       logout: () => {
-        // Remove a persistência do navegador para evitar login fantasma
+        // Remove a persistência do navegador
         try {
             localStorage.removeItem('jobcopilot-storage');
         } catch (e) {
             console.error('Erro ao limpar storage', e);
         }
 
+        // Reseta o estado
         set({
           user: null,
           userId: '',
+          token: null,
+          isAuthenticated: false,
           jobs: [],
           pipeline: [],
           drafts: [],
@@ -118,9 +134,12 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'jobcopilot-storage', // Nome no localStorage
+      // AQUI É IMPORTANTE: O que deve sobreviver ao F5?
       partialize: (state) => ({
         userId: state.userId,
         user: state.user,
+        token: state.token, // <--- Token precisa persistir
+        isAuthenticated: state.isAuthenticated,
         sidebarOpen: state.sidebarOpen,
       }),
     }
@@ -131,20 +150,12 @@ export const useAppStore = create<AppState>()(
 // HOOKS CUSTOMIZADOS (SELECTORS)
 // ============================================================================
 
-/**
- * Hook para pegar apenas o userId
- */
 export const useUserId = () => useAppStore((state) => state.userId);
+export const useToken = () => useAppStore((state) => state.token); // Novo hook útil
 
-/**
- * Hook para pegar vagas por status no pipeline
- */
 export const usePipelineByStatus = (status: SavedJob['status']) =>
   useAppStore((state) => state.pipeline.filter((item) => item.status === status));
 
-/**
- * Hook para estatísticas rápidas
- */
 export const useStats = () =>
   useAppStore((state) => ({
     totalJobs: state.jobs.length,

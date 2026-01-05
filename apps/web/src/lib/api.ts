@@ -5,6 +5,7 @@
  */
 
 import axios from 'axios';
+import { useAppStore } from './store'; // <--- IMPORTANTE: Importar a store para pegar o token
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3003';
 
@@ -16,20 +17,40 @@ export const apiClient = axios.create({
   timeout: 30000, // 30 segundos
 });
 
-// Interceptor para logging (desenvolvimento)
-if (process.env.NODE_ENV === 'development') {
-  apiClient.interceptors.request.use((config) => {
-    return config;
-  });
+// ============================================================================
+// INTERCEPTOR DE AUTENTICAÇÃO (Obrigatorio para JWT)
+// ============================================================================
+apiClient.interceptors.request.use((config) => {
+  // 1. Pega o token atual do estado global (Zustand)
+  const token = useAppStore.getState().token;
 
-  apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      console.error(`❌ API Error: ${error.config?.url}`, error.response?.data || error.message);
-      return Promise.reject(error);
+  // 2. Se houver token, injeta no cabeçalho Authorization
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // Logging em desenvolvimento
+  if (process.env.NODE_ENV === 'development') {
+    // console.log(`🌐 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+  }
+
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Se der erro 401 (Não autorizado), podemos deslogar o usuário automaticamente
+    if (error.response?.status === 401) {
+        useAppStore.getState().logout();
     }
-  );
-}
+    
+    if (process.env.NODE_ENV === 'development') {
+        console.error(`❌ API Error: ${error.config?.url}`, error.response?.data || error.message);
+    }
+    return Promise.reject(error);
+  }
+);
 
 // ============================================================================
 // TIPOS (TypeScript)
@@ -129,7 +150,7 @@ export const authApi = {
 };
 
 // ============================================================================
-// 2. API - USER PROFILE (NOVO)
+// 2. API - USER PROFILE
 // ============================================================================
 export const userApi = {
   /**
@@ -179,7 +200,7 @@ export const jobsApi = {
     const response = await apiClient.get('/jobs', { 
         params: {
             page: params?.page,
-            q: params?.q, // CORREÇÃO: Backend espera 'q', não 'search'
+            q: params?.q, // Mapeado corretamente para o backend
             company: params?.company,
             remote: params?.remote,
             atsType: params?.atsType,
