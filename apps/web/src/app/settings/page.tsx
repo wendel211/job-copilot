@@ -2,22 +2,26 @@
 
 import React, { useState, useEffect } from 'react';
 import AppShell from '@/components/layout/AppShell';
-import { Card, CardHeader, CardContent } from '@/components/ui/Card';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
+import { LoadingSpinner } from '@/components/ui/Loading';
+import { UserProfileSettings } from '@/components/settings/UserProfileSettings'; // <--- O COMPONENTE QUE CRIAMOS
 
 import {
-  Settings as SettingsIcon,
+  User,
   Mail,
   Check,
-  AlertCircle,
   Info,
   ExternalLink,
+  Trash2,
+  RefreshCw
 } from 'lucide-react';
 import { providersApi, type EmailProvider } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
+import { toast } from 'sonner';
 
 // ============================================================================
 // SMTP PRESETS
@@ -58,45 +62,42 @@ interface ProviderCardProps {
 
 const ProviderCard = ({ provider, onTest, onDelete, isTesting }: ProviderCardProps) => {
   return (
-    <Card>
-      <CardContent className="p-6">
+    <Card className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow">
+      <CardContent className="p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <Mail className="w-5 h-5 text-blue-600" />
               <h3 className="font-semibold text-gray-900">
-                {provider.fromName || 'SMTP Provider'}
+                {provider.fromName || 'Provedor SMTP'}
               </h3>
               {provider.isActive && (
-                <Badge variant="success" size="sm">
-                  Ativo
-                </Badge>
+                <Badge variant="success" size="sm">Ativo</Badge>
               )}
             </div>
             <div className="space-y-1 text-sm text-gray-600">
-              <p>
-                <strong>Email:</strong> {provider.fromEmail || 'Não configurado'}
-              </p>
-              <p>
-                <strong>Tipo:</strong> {provider.type.toUpperCase()}
-              </p>
+              <p><strong>Email:</strong> {provider.fromEmail}</p>
+              <p><strong>Host:</strong> {provider.type === 'smtp' ? 'SMTP Personalizado' : provider.type.toUpperCase()}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 min-w-[100px]">
             <Button
               variant="outline"
               size="sm"
               onClick={() => onTest(provider.id)}
               disabled={isTesting}
-              isLoading={isTesting}
+              className="w-full justify-start"
             >
+              {isTesting ? <span className="mr-2"><LoadingSpinner size="sm" /></span> : <RefreshCw className="w-3 h-3 mr-2" />}
               Testar
             </Button>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onDelete(provider.id)}
+              className="text-red-500 hover:text-red-700 hover:bg-red-50 w-full justify-start"
             >
+              <Trash2 className="w-3 h-3 mr-2" />
               Remover
             </Button>
           </div>
@@ -106,17 +107,19 @@ const ProviderCard = ({ provider, onTest, onDelete, isTesting }: ProviderCardPro
   );
 };
 
-// ============================================================================
-// SETTINGS PAGE
-// ============================================================================
 export default function SettingsPage() {
   const { userId } = useAppStore();
+  
+  // Abas
+  const [activeTab, setActiveTab] = useState<'profile' | 'smtp'>('profile');
+  
+  // Estado SMTP
   const [providers, setProviders] = useState<EmailProvider[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSmtp, setIsLoadingSmtp] = useState(false); // Carrega só ao entrar na aba SMTP
   const [isSaving, setIsSaving] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
 
-  // Form state
+  // Form SMTP
   const [preset, setPreset] = useState<keyof typeof SMTP_PRESETS>('gmail');
   const [formData, setFormData] = useState({
     smtpHost: SMTP_PRESETS.gmail.host,
@@ -128,10 +131,14 @@ export default function SettingsPage() {
     fromName: '',
   });
 
+  // Carregar provedores apenas quando a aba SMTP for ativada (ou na montagem se preferir)
   useEffect(() => {
-    loadProviders();
-  }, [userId]);
+    if (activeTab === 'smtp' && userId) {
+        loadProviders();
+    }
+  }, [activeTab, userId]);
 
+  // Atualizar form ao mudar preset
   useEffect(() => {
     const selected = SMTP_PRESETS[preset];
     setFormData((prev) => ({
@@ -144,21 +151,22 @@ export default function SettingsPage() {
 
   const loadProviders = async () => {
     try {
-      setIsLoading(true);
+      setIsLoadingSmtp(true);
       const { providers: data } = await providersApi.list(userId);
       setProviders(data);
     } catch (error) {
       console.error('Erro ao carregar provedores:', error);
+      toast.error('Erro ao carregar configurações de email.');
     } finally {
-      setIsLoading(false);
+      setIsLoadingSmtp(false);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitSmtp = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formData.smtpUser || !formData.smtpPass || !formData.fromEmail) {
-      alert('Preencha todos os campos obrigatórios');
+      toast.warning('Preencha todos os campos obrigatórios');
       return;
     }
 
@@ -170,223 +178,240 @@ export default function SettingsPage() {
         ...formData,
       });
       await loadProviders();
-      alert('Provedor SMTP configurado com sucesso! ✓');
-      // Reset form
-      setFormData({
-        ...formData,
-        smtpUser: '',
-        smtpPass: '',
-        fromEmail: '',
-        fromName: '',
-      });
+      toast.success('Provedor SMTP configurado com sucesso!');
+      
+      // Limpar senha por segurança
+      setFormData(prev => ({ ...prev, smtpPass: '' }));
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      alert('Erro ao configurar SMTP');
+      toast.error('Erro ao configurar SMTP. Verifique os dados.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleTest = async (providerId: string) => {
+  const handleTestSmtp = async (providerId: string) => {
     try {
       setTestingId(providerId);
       const result = await providersApi.test(providerId);
       if (result.ok) {
-        alert('✓ Conexão SMTP testada com sucesso!');
+        toast.success('Conexão SMTP testada com sucesso!');
+      } else {
+        toast.error('Falha na conexão SMTP.');
       }
     } catch (error) {
       console.error('Erro no teste:', error);
-      alert('❌ Erro ao testar conexão. Verifique as credenciais.');
+      toast.error('Erro ao testar conexão.');
     } finally {
       setTestingId(null);
     }
   };
 
-const handleDelete = async (providerId: string) => {
-    if (!confirm('Tem certeza que deseja remover este provedor de e-mail?')) return;
+  const handleDeleteSmtp = async (providerId: string) => {
+    if (!confirm('Tem certeza que deseja remover este provedor?')) return;
 
     try {
       await providersApi.delete(providerId);
-      
       setProviders((prev) => prev.filter((p) => p.id !== providerId));
-      
-      alert('Provedor removido com sucesso!');
+      toast.success('Provedor removido.');
     } catch (error) {
       console.error('Erro ao remover:', error);
-      alert('Erro ao remover o provedor. Tente novamente.');
+      toast.error('Erro ao remover o provedor.');
     }
   };
 
   return (
     <AppShell>
-      <div className="space-y-6 animate-slide-in max-w-4xl">
+      <div className="max-w-4xl mx-auto space-y-8 pb-20 animate-in fade-in duration-500">
+        
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Configurações</h1>
-          <p className="text-gray-600 mt-1">
-            Configure seu servidor SMTP para enviar emails
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Configurações</h1>
+          <p className="text-gray-500 mt-2">
+            Gerencie seu perfil profissional e as integrações de envio de email.
           </p>
         </div>
 
-        {/* Existing Providers */}
-        {!isLoading && providers.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Provedores Configurados
-            </h2>
-            {providers.map((provider) => (
-              <ProviderCard
-                key={provider.id}
-                provider={provider}
-                onTest={handleTest}
-                onDelete={handleDelete}
-                isTesting={testingId === provider.id}
-              />
-            ))}
-          </div>
+        {/* Tabs de Navegação */}
+        <div className="flex border-b border-gray-200">
+            <button
+                onClick={() => setActiveTab('profile')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === 'profile' 
+                    ? 'border-blue-600 text-blue-600 bg-blue-50/50' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+                <User className="w-4 h-4" /> Meu Perfil
+            </button>
+            <button
+                onClick={() => setActiveTab('smtp')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === 'smtp' 
+                    ? 'border-blue-600 text-blue-600 bg-blue-50/50' 
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+            >
+                <Mail className="w-4 h-4" /> Integrações (SMTP)
+            </button>
+        </div>
+
+        {/* --- CONTEÚDO DA ABA: PERFIL --- */}
+        {activeTab === 'profile' && (
+            // Importamos o componente isolado para manter o código limpo
+            <UserProfileSettings />
         )}
 
-        {/* Info Card */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-800">
-                <p className="font-medium mb-2">📧 Como configurar o SMTP:</p>
-                <ul className="space-y-1">
-                  <li>
-                    <strong>Gmail:</strong> Ative a verificação em 2 etapas e crie
-                    uma senha de app
-                  </li>
-                  <li>
-                    <strong>Outlook:</strong> Use seu email e senha normais
-                  </li>
-                  <li>
-                    <strong>Outros:</strong> Consulte a documentação do seu provedor
-                  </li>
-                </ul>
+        {/* --- CONTEÚDO DA ABA: SMTP --- */}
+        {activeTab === 'smtp' && (
+          <div className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
+            
+            {/* Lista de Provedores Existentes */}
+            {isLoadingSmtp ? (
+                <div className="flex justify-center p-8"><LoadingSpinner /></div>
+            ) : providers.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <Check className="w-5 h-5 text-green-600" />
+                    Provedores Ativos
+                </h2>
+                {providers.map((provider) => (
+                  <ProviderCard
+                    key={provider.id}
+                    provider={provider}
+                    onTest={handleTestSmtp}
+                    onDelete={handleDeleteSmtp}
+                    isTesting={testingId === provider.id}
+                  />
+                ))}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            )}
 
-        {/* Add New Provider Form */}
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-semibold text-gray-900">
-              Adicionar Provedor SMTP
-            </h2>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Preset Selection */}
-              <Select
-                label="Provedor"
-                value={preset}
-                onChange={(e) => setPreset(e.target.value as keyof typeof SMTP_PRESETS)}
-                options={[
-                  { value: 'gmail', label: 'Gmail' },
-                  { value: 'outlook', label: 'Outlook/Hotmail' },
-                  { value: 'custom', label: 'Personalizado' },
-                ]}
-              />
+            {/* Card de Informação/Ajuda */}
+            <Card className="bg-blue-50 border-blue-200 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-bold mb-1">Como configurar o SMTP:</p>
+                    <ul className="space-y-1 list-disc list-inside">
+                      <li>
+                        <strong>Gmail:</strong> Ative a verificação em 2 etapas e crie
+                        uma <a href="https://myaccount.google.com/apppasswords" target="_blank" className="underline hover:text-blue-900">senha de app</a>.
+                      </li>
+                      <li>
+                        <strong>Outlook:</strong> Use seu email e senha normais (ou senha de app se tiver 2FA).
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Help Text */}
-              <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700">
-                {SMTP_PRESETS[preset].help}
-                {preset === 'gmail' && (
-                  <a
-                    href="https://myaccount.google.com/apppasswords"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700 ml-2 inline-flex items-center gap-1"
-                  >
-                    Criar senha de app
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                )}
-              </div>
+            {/* Formulário de Novo Provedor */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Adicionar Novo Provedor</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmitSmtp} className="space-y-5">
+                  
+                  <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-gray-700">Predefinição</label>
+                      <Select
+                        value={preset}
+                        onChange={(e) => setPreset(e.target.value as keyof typeof SMTP_PRESETS)}
+                        options={[
+                          { value: 'gmail', label: 'Gmail' },
+                          { value: 'outlook', label: 'Outlook/Hotmail' },
+                          { value: 'custom', label: 'Personalizado' },
+                        ]}
+                      />
+                  </div>
 
-              {/* Server Config */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Servidor SMTP"
-                  value={formData.smtpHost}
-                  onChange={(e) =>
-                    setFormData({ ...formData, smtpHost: e.target.value })
-                  }
-                  placeholder="smtp.gmail.com"
-                  required
-                />
-                <Input
-                  label="Porta"
-                  type="number"
-                  value={formData.smtpPort}
-                  onChange={(e) =>
-                    setFormData({ ...formData, smtpPort: Number(e.target.value) })
-                  }
-                  required
-                />
-              </div>
+                  {/* Configuração do Servidor */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">Servidor SMTP</label>
+                        <Input
+                            value={formData.smtpHost}
+                            onChange={(e) => setFormData({ ...formData, smtpHost: e.target.value })}
+                            placeholder="smtp.gmail.com"
+                            required
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">Porta</label>
+                        <Input
+                            type="number"
+                            value={formData.smtpPort}
+                            onChange={(e) => setFormData({ ...formData, smtpPort: Number(e.target.value) })}
+                            required
+                        />
+                    </div>
+                  </div>
 
-              {/* Credentials */}
-              <Input
-                label="Usuário SMTP (Email)"
-                type="email"
-                value={formData.smtpUser}
-                onChange={(e) =>
-                  setFormData({ ...formData, smtpUser: e.target.value })
-                }
-                placeholder="seu-email@gmail.com"
-                required
-              />
+                  {/* Credenciais */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">Usuário (Email de Login)</label>
+                        <Input
+                            type="email"
+                            value={formData.smtpUser}
+                            onChange={(e) => setFormData({ ...formData, smtpUser: e.target.value })}
+                            placeholder="seu-email@gmail.com"
+                            required
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">Senha / App Password</label>
+                        <Input
+                            type="password"
+                            value={formData.smtpPass}
+                            onChange={(e) => setFormData({ ...formData, smtpPass: e.target.value })}
+                            placeholder="••••••••••••••••"
+                            required
+                        />
+                    </div>
+                  </div>
 
-              <Input
-                label="Senha SMTP"
-                type="password"
-                value={formData.smtpPass}
-                onChange={(e) =>
-                  setFormData({ ...formData, smtpPass: e.target.value })
-                }
-                placeholder="••••••••••••••••"
-                required
-              />
+                  <div className="border-t border-gray-100 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">Email de Envio (From)</label>
+                        <Input
+                            type="email"
+                            value={formData.fromEmail}
+                            onChange={(e) => setFormData({ ...formData, fromEmail: e.target.value })}
+                            placeholder="Igual ao login"
+                            required
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-medium text-gray-700">Nome do Remetente</label>
+                        <Input
+                            value={formData.fromName}
+                            onChange={(e) => setFormData({ ...formData, fromName: e.target.value })}
+                            placeholder="Ex: João da Silva"
+                        />
+                    </div>
+                  </div>
 
-              {/* From Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Email de Envio"
-                  type="email"
-                  value={formData.fromEmail}
-                  onChange={(e) =>
-                    setFormData({ ...formData, fromEmail: e.target.value })
-                  }
-                  placeholder="seu-email@gmail.com"
-                  required
-                />
-                <Input
-                  label="Nome do Remetente"
-                  value={formData.fromName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, fromName: e.target.value })
-                  }
-                  placeholder="Seu Nome"
-                />
-              </div>
-
-              {/* Submit */}
-              <Button
-                type="submit"
-                disabled={isSaving}
-                isLoading={isSaving}
-                className="w-full"
-              >
-                <Check className="w-4 h-4" />
-                Salvar Configuração
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                  <div className="pt-2">
+                    <Button
+                        type="submit"
+                        disabled={isSaving}
+                        isLoading={isSaving}
+                        className="w-full md:w-auto"
+                    >
+                        <Check className="w-4 h-4 mr-2" />
+                        Salvar e Ativar
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </AppShell>
   );
