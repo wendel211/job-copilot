@@ -1,6 +1,6 @@
 /**
  * SERVIÇO DE API - CLIENTE HTTP
- * * Este arquivo centraliza todas as chamadas à API do backend.
+ * Este arquivo centraliza todas as chamadas à API do backend.
  * Usamos axios para fazer requisições HTTP tipadas e organizadas.
  */
 
@@ -8,7 +8,7 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3003';
 
-const apiClient = axios.create({
+export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -24,10 +24,7 @@ if (process.env.NODE_ENV === 'development') {
   });
 
   apiClient.interceptors.response.use(
-    (response) => {
-      // console.log(`✅ API Response: ${response.config.url}`, response.data);
-      return response;
-    },
+    (response) => response,
     (error) => {
       console.error(`❌ API Error: ${error.config?.url}`, error.response?.data || error.message);
       return Promise.reject(error);
@@ -38,6 +35,12 @@ if (process.env.NODE_ENV === 'development') {
 // ============================================================================
 // TIPOS (TypeScript)
 // ============================================================================
+export interface Company {
+    id: string;
+    name: string;
+    website: string | null;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -46,12 +49,21 @@ export interface Job {
   description: string;
   applyUrl: string;
   atsType: string;
-  company: {
-    id: string;
-    name: string;
-    website: string | null;
-  };
+  // Adicionado para suportar os filtros visuais
+  sourceType: 'manual' | 'linkedin' | 'adzuna' | 'programathor' | 'remotive' | 'gupy' | 'greenhouse' | 'lever';
+  company: Company;
   createdAt: string;
+}
+
+// Adicionado para suportar a paginação do JobsPage
+export interface PaginatedResponse<T> {
+    data: T[];
+    meta: {
+      total: number;
+      page: number;
+      lastPage: number;
+      limit: number;
+    };
 }
 
 export type PipelineStage = 
@@ -97,17 +109,11 @@ export interface EmailProvider {
 // 1. API - AUTH (LOGIN & REGISTRO)
 // ============================================================================
 export const authApi = {
-  /**
-   * Realizar Login
-   */
   async login(email: string, password: string) {
     const { data } = await apiClient.post('/auth/login', { email, password });
     return data;
   },
 
-  /**
-   * Criar nova conta
-   */
   async register(email: string, password: string, fullName: string) {
     const { data } = await apiClient.post('/auth/register', { email, password, fullName });
     return data;
@@ -119,17 +125,29 @@ export const authApi = {
 // ============================================================================
 export const jobsApi = {
   /**
-   * Buscar vagas com filtros
+   * Buscar vagas com filtros e paginação
    */
   async search(params?: {
+    page?: number;
     q?: string;
     company?: string;
     remote?: boolean;
     atsType?: string;
+    source?: string; // Filtro de fonte
     take?: number;
-    skip?: number;
-  }): Promise<Job[]> {
-    const response = await apiClient.get('/jobs/search', { params });
+  }): Promise<PaginatedResponse<Job>> { // Retorna estrutura paginada
+    // Se o backend ainda retornar array direto em alguns casos, o frontend deve tratar,
+    // mas aqui tipamos como PaginatedResponse conforme a atualização do Controller.
+    const response = await apiClient.get('/jobs', { 
+        params: {
+            page: params?.page,
+            search: params?.q,
+            remote: params?.remote,
+            atsType: params?.atsType,
+            source: params?.source,
+            limit: params?.take
+        } 
+    });
     return response.data;
   },
 
@@ -140,15 +158,33 @@ export const jobsApi = {
     const response = await apiClient.get(`/jobs/${id}`);
     return response.data;
   },
+
+  /**
+   * Buscar recomendações (Sugestões)
+   */
+  async getRecommendations(): Promise<Job[]> {
+    const response = await apiClient.get('/jobs/recommendations');
+    return response.data;
+  }
+};
+
+// ============================================================================
+// API - AI (Inteligência Artificial / Match)
+// ============================================================================
+export const aiApi = {
+    /**
+     * Calcular match entre usuário e vaga
+     */
+    async analyzeMatch(userId: string, jobId: string) {
+        const { data } = await apiClient.post('/ai/match', { userId, jobId });
+        return data; // { score, foundSkills, analysis }
+    }
 };
 
 // ============================================================================
 // API - IMPORT (Importação Manual)
 // ============================================================================
 export const importApi = {
-  /**
-   * Importar vaga por URL
-   */
   async importFromLink(url: string, userId: string): Promise<{ success: boolean; job: Job }> {
     const response = await apiClient.post('/import/link', { url, userId });
     return response.data;
@@ -159,48 +195,30 @@ export const importApi = {
 // API - PIPELINE (Kanban de Candidaturas)
 // ============================================================================
 export const pipelineApi = {
-  /**
-   * Listar vagas salvas do usuário (Alias para getAll)
-   */
   async list(userId: string): Promise<SavedJob[]> {
     const response = await apiClient.get(`/pipeline/user/${userId}`);
     return response.data;
   },
 
-  /**
-   * Alias para list (usado na ApplicationsPage)
-   */
   async getAll(userId: string): Promise<SavedJob[]> {
     return this.list(userId);
   },
 
-  /**
-   * Adicionar vaga ao pipeline (Salvar)
-   */
   async create(userId: string, jobId: string): Promise<SavedJob> {
     const response = await apiClient.post('/pipeline', { userId, jobId });
     return response.data;
   },
 
-  /**
-   * Atualizar status da vaga
-   */
   async updateStatus(itemId: string, status: string): Promise<SavedJob> {
     const response = await apiClient.patch(`/pipeline/${itemId}/status`, { status });
     return response.data;
   },
 
-  /**
-   * Adicionar nota
-   */
   async addNote(itemId: string, note: string): Promise<SavedJob> {
     const response = await apiClient.patch(`/pipeline/${itemId}/note`, { note });
     return response.data;
   },
 
-  /**
-   * Remover vaga do pipeline (Desalvar)
-   */
   async delete(itemId: string): Promise<{ success: boolean }> {
     const response = await apiClient.delete(`/pipeline/${itemId}`);
     return response.data;
@@ -211,25 +229,16 @@ export const pipelineApi = {
 // API - EMAIL DRAFTS (Rascunhos)
 // ============================================================================
 export const draftsApi = {
-  /**
-   * Listar rascunhos do usuário
-   */
   async list(userId: string): Promise<{ drafts: EmailDraft[] }> {
     const response = await apiClient.get('/email/drafts', { params: { userId } });
     return response.data;
   },
 
-  /**
-   * Obter rascunho específico
-   */
   async get(draftId: string, userId: string): Promise<{ draft: EmailDraft }> {
     const response = await apiClient.get(`/email/drafts/${draftId}`, { params: { userId } });
     return response.data;
   },
 
-  /**
-   * Atualizar rascunho
-   */
   async update(draftId: string, userId: string, data: {
     subject?: string;
     bodyText?: string;
@@ -239,9 +248,6 @@ export const draftsApi = {
     return response.data;
   },
 
-  /**
-   * Excluir rascunho
-   */
   async delete(draftId: string, userId: string): Promise<{ success: boolean }> {
     const response = await apiClient.delete(`/email/drafts/${draftId}`, { params: { userId } });
     return response.data;
@@ -252,17 +258,11 @@ export const draftsApi = {
 // API - EMAIL SEND (Envio)
 // ============================================================================
 export const emailApi = {
-  /**
-   * Enviar email real via SMTP (Envio Direto - JobCopilot)
-   */
   async send(userId: string, data: { subject: string; body: string; to: string; jobId?: string }): Promise<{ success: boolean; messageId: string }> {
     const response = await apiClient.post('/email/send', { userId, ...data });
     return response.data;
   },
 
-  /**
-   * Enviar rascunho salvo (Envio de Draft)
-   */
   async sendDraft(userId: string, draftId: string): Promise<{ success: boolean; messageId: string }> {
     const response = await apiClient.post('/email/send/draft', { userId, draftId });
     return response.data;
@@ -280,17 +280,11 @@ export const statsApi = {
 // API - EMAIL PROVIDERS (Configuração SMTP)
 // ============================================================================
 export const providersApi = {
-  /**
-   * Listar provedores configurados
-   */
   async list(userId: string): Promise<{ providers: EmailProvider[] }> {
     const response = await apiClient.get('/email/providers', { params: { userId } });
     return response.data;
   },
 
-  /**
-   * Criar novo provedor SMTP
-   */
   async create(data: {
     userId: string;
     type: string;
@@ -306,27 +300,21 @@ export const providersApi = {
     return response.data;
   },
 
-  /**
-   * Testar conexão SMTP
-   */
   async test(providerId: string): Promise<{ ok: boolean }> {
     const response = await apiClient.post(`/email/providers/${providerId}/test`);
     return response.data;
   },
 
-  /**
-   * Remover provedor
-   */
   async delete(providerId: string): Promise<{ success: boolean }> {
     const response = await apiClient.delete(`/email/providers/${providerId}`);
     return response.data;
   },
 };
 
-
 export default {
   auth: authApi,
   jobs: jobsApi,
+  ai: aiApi, 
   import: importApi,
   pipeline: pipelineApi,
   drafts: draftsApi,

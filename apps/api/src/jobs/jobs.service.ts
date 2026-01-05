@@ -1,27 +1,27 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
-import { AtsType } from "@prisma/client";
+import { AtsType, JobSourceType, Prisma } from "@prisma/client";
 
-interface SearchParams {
+interface FindAllParams {
+  page?: number;
+  limit?: number;
   q?: string;
   company?: string;
   location?: string;
   atsType?: string;
+  source?: string;
   remote?: boolean;
-  take: number;
-  skip: number;
 }
 
 @Injectable()
 export class JobsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  // ADICIONADO: Método para buscar uma vaga específica
   async findOne(id: string) {
     const job = await this.prisma.job.findUnique({
       where: { id },
       include: {
-        company: true, // Importante: Traz os dados da empresa (nome, site, etc)
+        company: true,
       },
     });
 
@@ -32,58 +32,78 @@ export class JobsService {
     return job;
   }
 
-  // Método de busca existente (mantido igual)
-  async search(params: SearchParams) {
-    const { q, company, location, atsType, remote, take, skip } = params;
+  async findAll(params: FindAllParams) {
+    const { page = 1, limit = 36, q, company, location, atsType, source, remote } = params;
+    const skip = (page - 1) * limit;
+
+    // Construção dinâmica do filtro (Where)
+    const where: Prisma.JobWhereInput = {
+      AND: [
+        // Filtro de Busca (Título, Descrição ou Empresa)
+        q ? {
+          OR: [
+            { title: { contains: q, mode: "insensitive" } },
+            { description: { contains: q, mode: "insensitive" } },
+            { company: { name: { contains: q, mode: "insensitive" } } },
+          ],
+        } : {},
+
+        // Filtro Específico de Empresa
+        company ? {
+          company: { name: { contains: company, mode: "insensitive" } },
+        } : {},
+
+        // Filtro de Localização
+        location ? {
+          location: { contains: location, mode: "insensitive" },
+        } : {},
+
+        // Filtro de ATS (Greenhouse, Lever, etc)
+        atsType ? { atsType: atsType as AtsType } : {},
+
+        // NOVO: Filtro de Fonte (Adzuna, Remotive, etc)
+        source ? { sourceType: source as JobSourceType } : {},
+
+        // Filtro de Remoto (apenas se for explicitamente true/false)
+        remote === true || remote === false ? { remote } : {},
+      ],
+    };
+
+    // Executa Transaction: Busca Dados + Conta Total
+    const [data, total] = await this.prisma.$transaction([
+      this.prisma.job.findMany({
+        where,
+        include: { company: true },
+        orderBy: { postedAt: "desc" }, // Mais recentes primeiro
+        take: limit,
+        skip: skip,
+      }),
+      this.prisma.job.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        lastPage: Math.ceil(total / limit),
+        limit,
+      },
+    };
+  }
+  async findRecommendations(userId: string) {
+ 
+    const userSkills = ['react', 'node', 'typescript', 'next.js', 'nest', 'javascript'];
 
     return this.prisma.job.findMany({
       where: {
-        AND: [
-          q
-            ? {
-                OR: [
-                  { title: { contains: q, mode: "insensitive" } },
-                  { description: { contains: q, mode: "insensitive" } },
-                  {
-                    company: {
-                      name: { contains: q, mode: "insensitive" },
-                    },
-                  },
-                ],
-              }
-            : {},
-
-          company
-            ? {
-                company: {
-                  name: { contains: company, mode: "insensitive" },
-                },
-              }
-            : {},
-
-          location
-            ? {
-                location: { contains: location, mode: "insensitive" },
-              }
-            : {},
-
-          atsType
-            ? {
-                atsType: atsType as AtsType,
-              }
-            : {},
-
-          remote === true || remote === false ? { remote } : {},
-        ],
+        OR: userSkills.map(skill => ({
+          description: { contains: skill, mode: 'insensitive' }
+        }))
       },
-      include: {
-        company: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take,
-      skip,
+      include: { company: true },
+      orderBy: { postedAt: 'desc' },
+      take: 5 
     });
   }
 }
