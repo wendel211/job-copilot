@@ -1,12 +1,21 @@
 import { Module } from '@nestjs/common';
-import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { PrismaModule } from '../../prisma/prisma.module'; // Importante para o banco funcionar
+import { AuthController } from './auth.controller';
+import { PrismaService } from '../../prisma/prisma.service';
+import { JwtModule } from '@nestjs/jwt'; 
+import { PassportModule } from '@nestjs/passport'; 
+import { JwtStrategy } from './jwt.strategy'; 
 
 @Module({
-  imports: [PrismaModule], // Permite que o AuthService use o Banco
+  imports: [
+    PassportModule,
+    JwtModule.register({
+      secret: 'SEGREDO_SUPER_SECRETO', 
+      signOptions: { expiresIn: '7d' }, 
+    }),
+  ],
   controllers: [AuthController],
-  providers: [AuthService],
+  providers: [AuthService, PrismaService, JwtStrategy], 
   exports: [AuthService],
 })
 export class AuthModule {}
