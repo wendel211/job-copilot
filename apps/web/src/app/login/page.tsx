@@ -33,8 +33,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const [loginForm, setLoginForm] = useState({
-    email: '',
-    password: '',
+    email: 'teste@teste.com',
+    password: '123456',
   });
 
   const [registerForm, setRegisterForm] = useState({
@@ -149,17 +149,9 @@ export default function LoginPage() {
       <div className="w-full lg:w-[480px] xl:w-[520px] bg-white shadow-2xl flex flex-col h-screen">
         {/* Header */}
         <div className="px-8 py-5 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-2xl font-bold text-gray-900">
-              {view === 'login' ? 'Bem-vindo de volta' : 'Criar sua conta'}
-            </h2>
-            <button
-              onClick={() => router.push('/')}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">
+            {view === 'login' ? 'Bem-vindo de volta' : 'Criar sua conta'}
+          </h2>
           <p className="text-gray-600 text-sm">
             {view === 'login'
               ? 'Acesse seu painel e continue sua jornada profissional'
