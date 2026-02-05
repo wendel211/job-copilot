@@ -397,7 +397,7 @@ function RegisterForm({
             Termos
           </a>{' '}
           e{' '}
-          <a href="/terms" className="text-emerald-600 hover:underline">
+          <a href="/privacy" className="text-emerald-600 hover:underline">
             Privacidade
           </a>
         </p>
