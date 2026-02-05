@@ -184,7 +184,7 @@ export default function DashboardPage() {
               </p>
             </div>
             <Link href="/jobs">
-              <Button className="bg-white text-emerald-700 hover:bg-emerald-50 shadow-lg font-semibold px-6 py-3 rounded-xl">
+              <Button className="bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-900/30 font-semibold px-6 py-3 rounded-xl border border-slate-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Nova Vaga
               </Button>
