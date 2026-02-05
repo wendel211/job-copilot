@@ -321,13 +321,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Right Actions */}
           <div className="flex items-center gap-2">
-            {/* Search */}
-            <button className="hidden md:flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-500 text-sm transition-colors">
-              <Search className="w-4 h-4" />
-              <span>Buscar...</span>
-              <kbd className="px-1.5 py-0.5 bg-white rounded text-[10px] font-mono border border-gray-200">⌘K</kbd>
-            </button>
-
             {/* Notifications */}
             <button className="relative p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors">
               <Bell className="w-5 h-5" />
