@@ -296,6 +296,14 @@ function LoginForm({
           Criar conta gratuita
         </button>
       </p>
+
+      {/* Data Protection Notice */}
+      <div className="flex items-center justify-center gap-2 mt-6 pt-5 border-t border-gray-100">
+        <ShieldCheck className="w-4 h-4 text-emerald-600" />
+        <p className="text-xs text-gray-500 text-center">
+          Seus dados estão protegidos com criptografia de ponta a ponta
+        </p>
+      </div>
     </>
   );
 }
