@@ -17,11 +17,7 @@ import {
   Lock,
   Target,
   FileText,
-  TrendingUp,
   CheckCircle2,
-  Sparkles,
-  BarChart3,
-  Brain,
   Upload,
 } from 'lucide-react';
 
@@ -397,11 +393,11 @@ function RegisterForm({
 
         <p className="text-xs text-gray-500 text-center mt-3">
           Ao criar uma conta, você concorda com nossos{' '}
-          <a href="#" className="text-emerald-600 hover:underline">
+          <a href="/terms" className="text-emerald-600 hover:underline">
             Termos
           </a>{' '}
           e{' '}
-          <a href="#" className="text-emerald-600 hover:underline">
+          <a href="/terms" className="text-emerald-600 hover:underline">
             Privacidade
           </a>
         </p>
