@@ -44,7 +44,7 @@ export class CreditsService {
         this.logger.log(`Crédito consumido. Usuário ${userId} agora tem ${credits - 1} créditos.`);
     }
 
-    // Cria cobrança PIX para comprar créditos
+    // Cria PIX QR Code para comprar créditos
     async createPurchase(userId: string, quantity: number = 1) {
         const amountCents = quantity * CREDIT_PRICE_CENTS;
 
@@ -58,35 +58,35 @@ export class CreditsService {
             },
         });
 
-        // Criar cobrança no AbacatePay
-        const billing = await this.abacatePay.createPixBilling({
+        // Criar PIX QR Code no AbacatePay
+        const pix = await this.abacatePay.createPixQrCode({
             amount: amountCents,
-            description: `${quantity} crédito(s) de importação - JobCopilot`,
-            externalId: purchase.id,
+            description: `${quantity} credito(s) JobCopilot`,
         });
 
-        if (!billing) {
+        if (!pix) {
             await this.prisma.creditPurchase.update({
                 where: { id: purchase.id },
                 data: { status: 'failed' },
             });
-            throw new BadRequestException('Erro ao criar cobrança. Tente novamente.');
+            throw new BadRequestException('Erro ao criar PIX. Tente novamente.');
         }
 
         // Atualizar com dados do PIX
         await this.prisma.creditPurchase.update({
             where: { id: purchase.id },
             data: {
-                abacateId: billing.id,
-                pixCode: billing.brCode,
-                pixQrCode: billing.qrCode,
+                abacateId: pix.id,
+                pixCode: pix.brCode,
+                pixQrCode: pix.brCodeBase64,
             },
         });
 
         return {
             purchaseId: purchase.id,
-            pixCode: billing.brCode,
-            pixQrCode: billing.qrCode,
+            pixCode: pix.brCode,
+            pixQrCode: pix.brCodeBase64,
+            paymentUrl: '',
             amount: amountCents / 100,
             credits: quantity,
         };

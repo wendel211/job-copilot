@@ -22,6 +22,8 @@ import { EventType } from "../events/enums/event-type.enum";
 
 import { JobSourceType } from "@prisma/client";
 
+import { CreditsService } from "../credits/credits.service";
+
 @Injectable()
 export class ImportService {
   constructor(
@@ -32,6 +34,7 @@ export class ImportService {
     private readonly gupy: GupyScraper,
     private readonly generic: GenericScraper,
     private readonly events: EventsService,
+    private readonly credits: CreditsService,
   ) { }
 
   // ===================================================================
@@ -40,6 +43,18 @@ export class ImportService {
   async importFromLink(dto: ImportJobDto) {
     if (!dto.url) {
       throw new BadRequestException("URL é obrigatória");
+    }
+
+    // ------------------------------------------------------------
+    // 0. VALIDAR CRÉDITOS (OBRIGATÓRIO PARA IMPORTAR)
+    // ------------------------------------------------------------
+    if (!dto.userId) {
+      throw new BadRequestException("Usuário não identificado");
+    }
+
+    const hasCredits = await this.credits.hasCredits(dto.userId);
+    if (!hasCredits) {
+      throw new BadRequestException("Sem créditos disponíveis. Compre mais para continuar importando.");
     }
 
     // ------------------------------------------------------------
@@ -137,7 +152,12 @@ export class ImportService {
     });
 
     // ------------------------------------------------------------
-    // 8. Retorno final
+    // 8. CONSUMIR CRÉDITO (após importação bem-sucedida)
+    // ------------------------------------------------------------
+    await this.credits.useCredit(dto.userId!);
+
+    // ------------------------------------------------------------
+    // 9. Retorno final
     // ------------------------------------------------------------
     return {
       created: true,

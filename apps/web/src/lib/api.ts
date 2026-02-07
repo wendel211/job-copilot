@@ -231,6 +231,30 @@ export const jobsApi = {
 };
 
 // ============================================================================
+// API - CREDITS (Créditos de Importação)
+// ============================================================================
+export interface CreditPurchase {
+  purchaseId: string;
+  pixCode: string;
+  pixQrCode: string;
+  paymentUrl: string;
+  amount: number;
+  credits: number;
+}
+
+export const creditsApi = {
+  async getCredits(): Promise<{ credits: number }> {
+    const { data } = await apiClient.get('/credits');
+    return data;
+  },
+
+  async purchaseCredits(quantity: number = 1): Promise<CreditPurchase> {
+    const { data } = await apiClient.post('/credits/purchase', { quantity });
+    return data;
+  }
+};
+
+// ============================================================================
 // API - AI (Inteligência Artificial / Match)
 // ============================================================================
 export const aiApi = {

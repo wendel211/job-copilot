@@ -1,6 +1,6 @@
-import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, UseGuards, BadRequestException } from '@nestjs/common';
 import { CreditsService } from './credits.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('Credits')
@@ -13,7 +13,11 @@ export class CreditsController {
     // GET /credits - Retorna créditos do usuário
     @Get()
     async getCredits(@Req() req: any) {
-        return this.creditsService.getCredits(req.user.sub);
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new BadRequestException('Usuário não autenticado');
+        }
+        return this.creditsService.getCredits(userId);
     }
 
     // POST /credits/purchase - Cria cobrança PIX para comprar créditos
@@ -22,7 +26,11 @@ export class CreditsController {
         @Req() req: any,
         @Body() body: { quantity?: number }
     ) {
+        const userId = req.user?.id;
+        if (!userId) {
+            throw new BadRequestException('Usuário não autenticado');
+        }
         const quantity = body.quantity || 1;
-        return this.creditsService.createPurchase(req.user.sub, quantity);
+        return this.creditsService.createPurchase(userId, quantity);
     }
 }

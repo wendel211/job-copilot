@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 
-import { ConfigModule } from "./config/config.module"; 
+import { ConfigModule } from "./config/config.module";
 import { PrismaModule } from "../prisma/prisma.module";
 
 // Domínios
@@ -9,6 +9,7 @@ import { JobsModule } from "./jobs/jobs.module";
 import { ImportModule } from "./import/import.module";
 import { TemplatesModule } from "./templates/templates.module";
 import { EmailModule } from "./email/email.module";
+import { CreditsModule } from "./credits/credits.module";
 
 // Pipeline / Events / Stats
 import { PipelineModule } from "./pipeline/pipeline.module";
@@ -20,15 +21,15 @@ import { UsersModule } from "./users/users.module";
 
 @Module({
   imports: [
-  
-    ConfigModule, 
+
+    ConfigModule,
     PrismaModule,
 
     // Base
     HealthModule,
 
     // Autenticação (Login/Registro)
-    AuthModule, 
+    AuthModule,
 
     UsersModule,
 
@@ -37,6 +38,7 @@ import { UsersModule } from "./users/users.module";
     ImportModule,
     TemplatesModule,
     EmailModule,
+    CreditsModule, // Sistema de créditos
 
     // Funcionamento interno
     PipelineModule,
@@ -46,4 +48,4 @@ import { UsersModule } from "./users/users.module";
     StatsModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }
