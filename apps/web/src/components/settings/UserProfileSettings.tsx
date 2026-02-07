@@ -19,11 +19,9 @@ export function UserProfileSettings() {
   const [saving, setSaving] = useState(false);
 
   const [profile, setProfile] = useState({
-    name: '',
     headline: '',
     bio: '',
     skills: [] as string[],
-    linkedinUrl: '',
     resumeUrl: '',
   });
 
@@ -33,11 +31,9 @@ export function UserProfileSettings() {
       try {
         const data = await userApi.getProfile();
         setProfile({
-          name: data.name || '',
           headline: data.headline || '',
           bio: data.bio || '',
           skills: data.skills || [],
-          linkedinUrl: data.linkedinUrl || '',
           resumeUrl: data.resumeUrl || '',
         });
       } catch (error) {
@@ -133,19 +129,9 @@ export function UserProfileSettings() {
         <Card>
           <CardHeader><CardTitle className="text-lg">Dados Profissionais</CardTitle></CardHeader>
           <CardContent className="space-y-5">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">Nome</label>
-                <Input className="text-gray-900 placeholder:text-gray-500" value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">Cargo (Headline)</label>
-                <Input className="text-gray-900 placeholder:text-gray-500" placeholder="Ex: Senior Frontend Dev" value={profile.headline} onChange={e => setProfile({ ...profile, headline: e.target.value })} />
-              </div>
-            </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">LinkedIn URL</label>
-              <Input className="text-gray-900 placeholder:text-gray-500" placeholder="https://linkedin.com/in/..." value={profile.linkedinUrl} onChange={e => setProfile({ ...profile, linkedinUrl: e.target.value })} />
+              <label className="text-sm font-medium text-gray-700">Cargo (Headline)</label>
+              <Input className="text-gray-900 placeholder:text-gray-500" placeholder="Ex: Senior Frontend Dev" value={profile.headline} onChange={e => setProfile({ ...profile, headline: e.target.value })} />
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-gray-700">Bio</label>
