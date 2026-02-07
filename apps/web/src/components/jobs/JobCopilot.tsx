@@ -37,6 +37,9 @@ const TECH_KEYWORDS = [
 export function JobCopilot({ job }: JobCopilotProps) {
   const { userId } = useAppStore();
 
+  // User Profile State
+  const [userProfile, setUserProfile] = useState<UserProfile>({ skills: [], headline: '', bio: '' });
+
   // Estados de Texto
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
@@ -46,6 +49,23 @@ export function JobCopilot({ job }: JobCopilotProps) {
   const [savedJobId, setSavedJobId] = useState<string | null>(null); // ID para poder deletar
   const [status, setStatus] = useState<'none' | 'saved' | 'applied'>('none');
 
+  // 0. Load user profile
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const data = await userApi.getProfile();
+        setUserProfile({
+          skills: data.skills || [],
+          headline: data.headline || '',
+          bio: data.bio || '',
+        });
+      } catch (error) {
+        console.error('Failed to load user profile for match calculation');
+      }
+    }
+    loadProfile();
+  }, []);
+
   // 1. Verifica status inicial (Simulação - ideal seria a API retornar isso na busca)
   useEffect(() => {
     // Resetar estados ao mudar de vaga
@@ -53,21 +73,38 @@ export function JobCopilot({ job }: JobCopilotProps) {
     setStatus('none');
   }, [job.id]);
 
-  // 2. Análise de Match
+  // 2. Análise de Match (usando profile real)
   const matchAnalysis = useMemo(() => {
     if (!job?.description) return { found: [], missing: [], score: 0 };
     const descriptionLower = job.description.toLowerCase();
+    const titleLower = job.title?.toLowerCase() || '';
 
+    // Skills do usuário (lowercase para comparação)
+    const userSkillsLower = userProfile.skills.map(s => s.toLowerCase());
+
+    // Skills detectadas na vaga
     const skillsInJob = TECH_KEYWORDS.filter(tech => descriptionLower.includes(tech.toLowerCase()));
-    const found = skillsInJob.filter(skill => MY_SKILLS.includes(skill));
-    const missing = skillsInJob.filter(skill => !MY_SKILLS.includes(skill));
 
-    const score = skillsInJob.length > 0
+    // Skills que o usuário tem e a vaga pede
+    const found = skillsInJob.filter(skill => userSkillsLower.includes(skill.toLowerCase()));
+    const missing = skillsInJob.filter(skill => !userSkillsLower.includes(skill.toLowerCase()));
+
+    // Base score: % de skills da vaga que o usuário tem
+    let score = skillsInJob.length > 0
       ? Math.round((found.length / skillsInJob.length) * 100)
       : 50;
 
+    // Bonus: Headline match (se o cargo do usuário aparece no título da vaga)
+    if (userProfile.headline) {
+      const headlineWords = userProfile.headline.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const headlineMatch = headlineWords.some(word => titleLower.includes(word) || descriptionLower.includes(word));
+      if (headlineMatch) {
+        score = Math.min(100, score + 10); // +10% bonus
+      }
+    }
+
     return { found, missing, score };
-  }, [job]);
+  }, [job, userProfile]);
 
   // 3. Gerar Template
   useEffect(() => {
