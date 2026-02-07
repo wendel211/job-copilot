@@ -78,15 +78,9 @@ export class UsersController {
   }))
   async uploadResume(
     @Req() req: any,
-    @UploadedFile(
-      new ParseFilePipe({
-        validators: [
-          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5MB
-          new FileTypeValidator({ fileType: 'application/pdf' }),
-        ],
-      }),
-    ) file: Express.Multer.File,
+    @UploadedFile() file: Express.Multer.File,  // Removed ParseFilePipe for debugging
   ) {
+    console.log('[Upload Debug] Request received, file:', file ? file.originalname : 'NO FILE RECEIVED');
     const userId = req.user.id;
 
     try {

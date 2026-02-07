@@ -57,6 +57,8 @@ export class UsersService {
     // 2. Tentar extrair dados do currículo
     try {
       const extractedData = await this.resumeParser.parseResume(filePath);
+      this.logger.log(`Extracted: skills=${extractedData.skills.length}, headline=${!!extractedData.headline}`);
+
 
       // Só atualiza se encontrar algo e se o campo estiver vazio ou se quisermos dar merge
       // Estratégia: Adicionar skills novas e preencher Headline/Bio se vazios
