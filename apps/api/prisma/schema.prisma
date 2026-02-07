@@ -77,18 +77,16 @@ model User {
   linkedinUrl   String?
   githubUrl     String?
 
-  // --- NOVOS CAMPOS DE PERFIL (ADICIONADOS PARA A PÁGINA SETTINGS) ---
-  headline      String?   // Ex: Senior React Developer
-  bio           String?   // Resumo profissional
-  skills        String[]  // Array: ["React", "Node", "AWS"]
+  // --- CAMPOS DE PERFIL ---
+  headline      String?
+  bio           String?
+  skills        String[]
   portfolioUrl  String?
-  
-  // Preferências de Vaga (JSON flexível)
-  jobPreferences Json?    // { "remote": true, "salary": 5000 }
-
-  // Caminho do PDF do Currículo
+  jobPreferences Json?
   resumeUrl     String?
-  // -------------------------------------------------------------------
+
+  // --- CRÉDITOS DE IMPORTAÇÃO ---
+  importCredits Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -98,8 +96,29 @@ model User {
   emailSends    EmailSend[]
   providers     EmailProvider[] 
   template      UserTemplate?
+  purchases     CreditPurchase[]
+  events        Event[] @relation("UserEvents")
+}
 
-  events Event[] @relation("UserEvents")
+// =======================
+// CREDIT PURCHASE (PAGAMENTOS)
+// =======================
+model CreditPurchase {
+  id          String   @id @default(cuid())
+  userId      String
+  credits     Int      // Quantidade de créditos
+  amountCents Int      // Valor em centavos (500 = R$5)
+  status      String   @default("pending") // pending, completed, failed
+  pixCode     String?  // Código PIX copia-e-cola
+  pixQrCode   String?  // QR Code base64
+  abacateId   String?  // ID da cobrança no AbacatePay
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([abacateId])
 }
 
 // =======================
