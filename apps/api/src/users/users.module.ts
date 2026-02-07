@@ -8,6 +8,6 @@ import { ResumeParserService } from './resume-parser.service';
   imports: [PrismaModule],
   controllers: [UsersController],
   providers: [UsersService, ResumeParserService],
-  exports: [UsersService],
+  exports: [UsersService, ResumeParserService],
 })
 export class UsersModule { }
