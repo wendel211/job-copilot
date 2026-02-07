@@ -1,16 +1,16 @@
-import { 
-  Controller, 
-  Get, 
-  Patch, 
-  Post, 
-  Body, 
-  Req, 
+import {
+  Controller,
+  Get,
+  Patch,
+  Post,
+  Body,
+  Req,
   UseGuards, // <--- Importante
-  UseInterceptors, 
-  UploadedFile, 
-  ParseFilePipe, 
-  MaxFileSizeValidator, 
-  FileTypeValidator 
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiConsumes, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
@@ -27,7 +27,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @UseGuards(JwtAuthGuard) // 🛡️ Protege TODAS as rotas deste controller
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   // =================================================================
   // 1. OBTER PERFIL
@@ -36,8 +36,8 @@ export class UsersController {
   @ApiOperation({ summary: 'Obter perfil do usuário logado' })
   async getProfile(@Req() req: any) {
     // O Guard (JwtAuthGuard) descriptografa o token e coloca o user no request
-    const userId = req.user.id; 
-    
+    const userId = req.user.id;
+
     return this.usersService.getProfile(userId);
   }
 
@@ -48,7 +48,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Atualizar dados do perfil' })
   async updateProfile(@Req() req: any, @Body() body: any) {
     const userId = req.user.id;
-    
+
     return this.usersService.updateProfile(userId, body);
   }
 
@@ -88,13 +88,17 @@ export class UsersController {
     ) file: Express.Multer.File,
   ) {
     const userId = req.user.id;
-    
+
     await this.usersService.updateResume(userId, file.path);
-    
-    return { 
-      message: 'Currículo enviado com sucesso', 
+
+    // Retornar o perfil atualizado para o frontend já pegar as skills novas
+    const updatedProfile = await this.usersService.getProfile(userId);
+
+    return {
+      message: 'Currículo enviado e processado com sucesso',
       filename: file.filename,
-      path: file.path 
+      file: file, // opcional, debug
+      profile: updatedProfile
     };
   }
 }
