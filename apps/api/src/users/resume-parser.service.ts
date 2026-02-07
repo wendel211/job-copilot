@@ -52,7 +52,7 @@ export class ResumeParserService {
         }
     }
 
-    private extractSkills(text: string): string[] {
+    public extractSkills(text: string): string[] {
         const foundSkills = new Set<string>();
 
         this.COMMON_SKILLS.forEach(skill => {
