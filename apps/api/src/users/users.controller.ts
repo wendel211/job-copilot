@@ -94,6 +94,9 @@ export class UsersController {
     // Retornar o perfil atualizado para o frontend já pegar as skills novas
     const updatedProfile = await this.usersService.getProfile(userId);
 
+    // Debug logging
+    console.log('Upload successful, returning profile:', updatedProfile.id);
+
     return {
       message: 'Currículo enviado e processado com sucesso',
       filename: file.filename,

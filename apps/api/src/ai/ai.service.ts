@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { JobsService } from '../../jobs/jobs.service';
-import { ResumeParserService } from '../../users/resume-parser.service';
+import { JobsService } from '../jobs/jobs.service';
+import { ResumeParserService } from '../users/resume-parser.service';
 
 @Injectable()
 export class AiService {

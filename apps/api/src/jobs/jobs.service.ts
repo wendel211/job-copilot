@@ -15,7 +15,7 @@ interface FindAllParams {
 
 @Injectable()
 export class JobsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async findOne(id: string) {
     const job = await this.prisma.job.findUnique({
@@ -92,8 +92,12 @@ export class JobsService {
     };
   }
   async findRecommendations(userId: string) {
- 
-    const userSkills = ['react', 'node', 'typescript', 'next.js', 'nest', 'javascript'];
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { skills: true }
+    });
+
+    const userSkills = user?.skills?.length ? user.skills : ['react', 'node', 'typescript']; // Default if empty
 
     return this.prisma.job.findMany({
       where: {
@@ -103,7 +107,7 @@ export class JobsService {
       },
       include: { company: true },
       orderBy: { postedAt: 'desc' },
-      take: 5 
+      take: 5
     });
   }
 }
