@@ -468,7 +468,8 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
             )}
           </div>
 
-          {!isEditingDescription && (
+          {/* Botão Editar só aparece se ainda não foi editada */}
+          {!isEditingDescription && job.descriptionSource !== 'manual' && (
             <Button
               variant="ghost"
               size="sm"
@@ -476,7 +477,7 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
               className="text-xs text-blue-600 hover:text-blue-700"
             >
               <Edit3 className="w-3 h-3 mr-1" />
-              Editar
+              Adicionar Descrição
             </Button>
           )}
         </div>

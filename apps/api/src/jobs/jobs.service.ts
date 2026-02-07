@@ -113,15 +113,13 @@ export class JobsService {
   }
 
   // ========================================================
-  // ATUALIZAR DESCRIÇÃO MANUALMENTE
+  // ATUALIZAR DESCRIÇÃO MANUALMENTE (APENAS UMA VEZ)
   // ========================================================
   async updateDescription(jobId: string, description: string) {
     const job = await this.prisma.job.findUnique({
       where: { id: jobId },
       select: {
         id: true,
-        descriptionEditedAt: true,
-        createdAt: true,
         descriptionSource: true
       }
     });
@@ -130,14 +128,10 @@ export class JobsService {
       throw new NotFoundException(`Vaga com ID ${jobId} não encontrada.`);
     }
 
-    // Verificar janela de edição (24 horas após criação ou última edição)
-    const EDIT_WINDOW_HOURS = 24;
-    const referenceDate = job.descriptionEditedAt || job.createdAt;
-    const hoursSinceReference = (Date.now() - referenceDate.getTime()) / (1000 * 60 * 60);
-
-    if (job.descriptionSource === 'manual' && hoursSinceReference > EDIT_WINDOW_HOURS) {
+    // VALIDAÇÃO: Só pode editar se ainda não foi editada manualmente
+    if (job.descriptionSource === 'manual') {
       throw new BadRequestException(
-        `Descrição só pode ser editada nas primeiras ${EDIT_WINDOW_HOURS} horas após a última edição.`
+        'Descrição já foi editada. Não é possível editar novamente.'
       );
     }
 
