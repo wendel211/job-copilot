@@ -1,11 +1,15 @@
-import { Controller, Get, Query, Param } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiQuery } from "@nestjs/swagger"; 
+import { Controller, Get, Query, Param, Patch, Body, BadRequestException } from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiQuery, ApiBody } from "@nestjs/swagger";
 import { JobsService } from "./jobs.service";
 
-@ApiTags("Jobs") 
+class UpdateDescriptionDto {
+  description: string;
+}
+
+@ApiTags("Jobs")
 @Controller("jobs")
 export class JobsController {
-  constructor(private readonly jobsService: JobsService) {}
+  constructor(private readonly jobsService: JobsService) { }
 
   // 1. LISTAGEM GERAL (Com paginação e filtros)
   @Get()
@@ -30,7 +34,7 @@ export class JobsController {
 
     return this.jobsService.findAll({
       page: pageNumber,
-      limit: 24, 
+      limit: 24,
       q: q?.trim(),
       company: company?.trim(),
       location: location?.trim(),
@@ -45,7 +49,7 @@ export class JobsController {
   @ApiOperation({ summary: "Vagas sugeridas para o perfil (Simulado)" })
   async getRecommendations() {
     // userId fixo por enquanto, futuramente pegamos do JWT (@User)
-    const userId = 'user-placeholder'; 
+    const userId = 'user-placeholder';
     return this.jobsService.findRecommendations(userId);
   }
 
@@ -54,5 +58,24 @@ export class JobsController {
   @ApiOperation({ summary: "Buscar detalhes de uma vaga pelo ID" })
   async findOne(@Param("id") id: string) {
     return this.jobsService.findOne(id);
+  }
+
+  // 4. ATUALIZAR DESCRIÇÃO MANUALMENTE
+  @Patch(":id/description")
+  @ApiOperation({ summary: "Atualizar descrição da vaga manualmente" })
+  @ApiBody({ type: UpdateDescriptionDto })
+  async updateDescription(
+    @Param("id") id: string,
+    @Body() body: UpdateDescriptionDto,
+  ) {
+    if (!body.description || body.description.trim().length < 50) {
+      throw new BadRequestException("Descrição deve ter pelo menos 50 caracteres");
+    }
+
+    if (body.description.length > 20000) {
+      throw new BadRequestException("Descrição muito longa (máximo 20.000 caracteres)");
+    }
+
+    return this.jobsService.updateDescription(id, body.description.trim());
   }
 }

@@ -12,6 +12,7 @@ import { GreenhouseScraper } from "./scrapers/greenhouse.scraper";
 import { LeverScraper } from "./scrapers/lever.scraper";
 import { WorkdayScraper } from "./scrapers/workday.scraper";
 import { GupyScraper } from "./scrapers/gupy.scraper";
+import { GenericScraper } from "./scrapers/generic.scraper";
 
 import { fetchHtml } from "./utils/fetch-html";
 import { fetchDynamicHtml } from "./utils/playwright-fallback";
@@ -29,8 +30,9 @@ export class ImportService {
     private readonly lever: LeverScraper,
     private readonly workday: WorkdayScraper,
     private readonly gupy: GupyScraper,
+    private readonly generic: GenericScraper,
     private readonly events: EventsService,
-  ) {}
+  ) { }
 
   // ===================================================================
   // IMPORTAÇÃO COMPLETA DE UMA VAGA
@@ -54,10 +56,7 @@ export class ImportService {
     // ------------------------------------------------------------
     const ats = detectATS(dto.url);
     const scraper = this.getScraper(ats);
-
-    if (!scraper) {
-      throw new BadRequestException(`ATS não suportado: ${ats}`);
-    }
+    // GenericScraper sempre será retornado como fallback, então nunca será null
 
     // ------------------------------------------------------------
     // 3. Extrair dados via scraper
@@ -158,7 +157,8 @@ export class ImportService {
       case "gupy":
         return this.gupy;
       default:
-        return null;
+        // Fallback: usar scraper genérico para qualquer outro site
+        return this.generic;
     }
   }
 }

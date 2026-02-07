@@ -42,11 +42,11 @@ apiClient.interceptors.response.use(
   (error) => {
     // Se der erro 401 (Não autorizado), podemos deslogar o usuário automaticamente
     if (error.response?.status === 401) {
-        useAppStore.getState().logout();
+      useAppStore.getState().logout();
     }
-    
+
     if (process.env.NODE_ENV === 'development') {
-        console.error(`❌ API Error: ${error.config?.url}`, error.response?.data || error.message);
+      console.error(`❌ API Error: ${error.config?.url}`, error.response?.data || error.message);
     }
     return Promise.reject(error);
   }
@@ -72,6 +72,8 @@ export interface Job {
   sourceType: 'manual' | 'linkedin' | 'adzuna' | 'programathor' | 'remotive' | 'gupy' | 'greenhouse' | 'lever';
   company: Company;
   createdAt: string;
+  descriptionEditedAt?: string | null;
+  descriptionSource?: 'auto' | 'manual';
 }
 
 export interface PaginatedResponse<T> {
@@ -95,22 +97,22 @@ export interface UserProfile {
   resumeUrl?: string;
 }
 
-export type PipelineStage = 
-  | 'discovered' 
-  | 'prepared' 
-  | 'applied'    
-  | 'sent' 
-  | 'screening' 
-  | 'interview' 
-  | 'offer'      
-  | 'rejected'   
+export type PipelineStage =
+  | 'discovered'
+  | 'prepared'
+  | 'applied'
+  | 'sent'
+  | 'screening'
+  | 'interview'
+  | 'offer'
+  | 'rejected'
   | 'closed';
 
 export interface SavedJob {
   id: string;
   status: PipelineStage;
   notes: string | null;
-  appliedAt: string | null; 
+  appliedAt: string | null;
   job: Job;
   createdAt: string;
   updatedAt: string;
@@ -175,7 +177,7 @@ export const userApi = {
   uploadResume: async (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    
+
     // O browser seta automaticamente o boundary do multipart/form-data
     const response = await apiClient.post('/users/resume', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -196,17 +198,17 @@ export const jobsApi = {
     atsType?: string;
     source?: string;
     take?: number;
-  }): Promise<PaginatedResponse<Job>> { 
-    const response = await apiClient.get('/jobs', { 
-        params: {
-            page: params?.page,
-            q: params?.q, // Mapeado corretamente para o backend
-            company: params?.company,
-            remote: params?.remote,
-            atsType: params?.atsType,
-            source: params?.source,
-            limit: params?.take
-        } 
+  }): Promise<PaginatedResponse<Job>> {
+    const response = await apiClient.get('/jobs', {
+      params: {
+        page: params?.page,
+        q: params?.q, // Mapeado corretamente para o backend
+        company: params?.company,
+        remote: params?.remote,
+        atsType: params?.atsType,
+        source: params?.source,
+        limit: params?.take
+      }
     });
     return response.data;
   },
@@ -219,6 +221,12 @@ export const jobsApi = {
   async getRecommendations(): Promise<Job[]> {
     const response = await apiClient.get('/jobs/recommendations');
     return response.data;
+  },
+
+  // Atualizar descrição manualmente (limite de 24h)
+  async updateDescription(jobId: string, description: string): Promise<Job> {
+    const response = await apiClient.patch(`/jobs/${jobId}/description`, { description });
+    return response.data;
   }
 };
 
@@ -226,10 +234,10 @@ export const jobsApi = {
 // API - AI (Inteligência Artificial / Match)
 // ============================================================================
 export const aiApi = {
-    async analyzeMatch(userId: string, jobId: string) {
-        const { data } = await apiClient.post('/ai/match', { userId, jobId });
-        return data;
-    }
+  async analyzeMatch(userId: string, jobId: string) {
+    const { data } = await apiClient.post('/ai/match', { userId, jobId });
+    return data;
+  }
 };
 
 // ============================================================================
@@ -364,9 +372,9 @@ export const providersApi = {
 
 export default {
   auth: authApi,
-  user: userApi, 
+  user: userApi,
   jobs: jobsApi,
-  ai: aiApi, 
+  ai: aiApi,
   import: importApi,
   pipeline: pipelineApi,
   drafts: draftsApi,

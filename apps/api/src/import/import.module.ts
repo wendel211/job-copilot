@@ -13,6 +13,7 @@ import { GreenhouseScraper } from "./scrapers/greenhouse.scraper";
 import { LeverScraper } from "./scrapers/lever.scraper";
 import { WorkdayScraper } from "./scrapers/workday.scraper";
 import { GupyScraper } from "./scrapers/gupy.scraper";
+import { GenericScraper } from "./scrapers/generic.scraper";
 
 // Novas Fontes "Zero-Cost" (Adicionados)
 import { AdzunaService } from "./sources/adzuna.service";
@@ -29,12 +30,13 @@ import { RemotiveService } from "./sources/remotive.service";
   providers: [
     ImportService,
     CrawlerService,
-    
+
     // Scrapers ATS
     GreenhouseScraper,
     LeverScraper,
     WorkdayScraper,
     GupyScraper,
+    GenericScraper,
 
     // Novas Fontes de Vagas
     AdzunaService,
@@ -43,7 +45,7 @@ import { RemotiveService } from "./sources/remotive.service";
   ],
   exports: [
     ImportService,
-    CrawlerService, 
+    CrawlerService,
   ]
 })
-export class ImportModule {}
+export class ImportModule { }

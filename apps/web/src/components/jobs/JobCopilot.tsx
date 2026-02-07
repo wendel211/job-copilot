@@ -11,14 +11,17 @@ import {
   Loader2,
   ArrowRight,
   Check,
-  X
+  X,
+  Edit3,
+  Save
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Job, pipelineApi, userApi } from '@/lib/api';
+import { Job, pipelineApi, userApi, jobsApi } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
 
 interface JobCopilotProps {
   job: Job;
+  onJobUpdate?: (updatedJob: Job) => void;
 }
 
 interface UserProfile {
@@ -101,7 +104,7 @@ const SKILL_ALIASES: Record<string, string> = {
   'inteligência artificial': 'ai'
 };
 
-export function JobCopilot({ job }: JobCopilotProps) {
+export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
   const { userId } = useAppStore();
 
   // User Profile State
@@ -115,6 +118,47 @@ export function JobCopilot({ job }: JobCopilotProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [savedJobId, setSavedJobId] = useState<string | null>(null); // ID para poder deletar
   const [status, setStatus] = useState<'none' | 'saved' | 'applied'>('none');
+
+  // Estados para edição de descrição
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState(job.description || '');
+  const [isSavingDescription, setIsSavingDescription] = useState(false);
+
+  // Atualizar descrição editada quando job mudar
+  useEffect(() => {
+    setEditedDescription(job.description || '');
+    setIsEditingDescription(false);
+  }, [job.id, job.description]);
+
+  // Função para salvar descrição
+  const handleSaveDescription = async () => {
+    if (editedDescription.trim().length < 50) {
+      toast.error('Descrição deve ter pelo menos 50 caracteres');
+      return;
+    }
+
+    setIsSavingDescription(true);
+    try {
+      const updatedJob = await jobsApi.updateDescription(job.id, editedDescription.trim());
+      toast.success('Descrição atualizada! O match será recalculado.');
+      setIsEditingDescription(false);
+      // Notificar componente pai sobre atualização
+      if (onJobUpdate) {
+        onJobUpdate(updatedJob);
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || 'Erro ao salvar descrição';
+      toast.error(message);
+    } finally {
+      setIsSavingDescription(false);
+    }
+  };
+
+  // Cancelar edição
+  const handleCancelEdit = () => {
+    setEditedDescription(job.description || '');
+    setIsEditingDescription(false);
+  };
 
   // 0. Load user profile
   useEffect(() => {
@@ -350,7 +394,7 @@ export function JobCopilot({ job }: JobCopilotProps) {
           <div className="hidden sm:block w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
             <div
               className={`h-full transition-all duration-500 ${matchAnalysis.score >= 70 ? 'bg-green-500' :
-                  matchAnalysis.score >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                matchAnalysis.score >= 40 ? 'bg-yellow-500' : 'bg-red-500'
                 }`}
               style={{ width: `${matchAnalysis.score}%` }}
             />
@@ -407,7 +451,90 @@ export function JobCopilot({ job }: JobCopilotProps) {
         )}
       </div>
 
-      {/* SEÇÃO 2: Cartão Principal */}
+      {/* SEÇÃO 2: Edição de Descrição */}
+      <div className="bg-white border rounded-xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Edit3 className="w-4 h-4 text-gray-500" />
+            <h3 className="font-semibold text-gray-800 text-sm">Descrição da Vaga</h3>
+            {job.descriptionSource === 'manual' ? (
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full font-medium">
+                Manual
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded-full font-medium">
+                Automático
+              </span>
+            )}
+          </div>
+
+          {!isEditingDescription && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsEditingDescription(true)}
+              className="text-xs text-blue-600 hover:text-blue-700"
+            >
+              <Edit3 className="w-3 h-3 mr-1" />
+              Editar
+            </Button>
+          )}
+        </div>
+
+        {isEditingDescription ? (
+          <div className="space-y-3">
+            <textarea
+              value={editedDescription}
+              onChange={(e) => setEditedDescription(e.target.value)}
+              placeholder="Cole aqui a descrição completa da vaga, incluindo requisitos, responsabilidades e qualificações..."
+              className="w-full h-48 p-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-400">
+                {editedDescription.length} caracteres (mín. 50)
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  disabled={isSavingDescription}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveDescription}
+                  disabled={isSavingDescription || editedDescription.trim().length < 50}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSavingDescription ? (
+                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-1" />
+                  )}
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-sm text-gray-600 max-h-32 overflow-y-auto">
+            {job.description?.length > 0 ? (
+              <p className="whitespace-pre-line line-clamp-5">
+                {job.description.substring(0, 500)}
+                {job.description.length > 500 && '...'}
+              </p>
+            ) : (
+              <p className="text-gray-400 italic">
+                Nenhuma descrição disponível. Clique em "Editar" para colar a descrição da vaga.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* SEÇÃO 3: Cartão Principal */}
       <Card className="border shadow-sm overflow-hidden bg-white">
 
         {/* Header do Card com Botão de Salvar */}

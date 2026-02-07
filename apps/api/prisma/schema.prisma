@@ -160,6 +160,10 @@ model Job {
   updatedAt      DateTime @updatedAt
   createdAt      DateTime @default(now())
 
+  // --- CAMPOS PARA EDIÇÃO MANUAL DE DESCRIÇÃO ---
+  descriptionEditedAt DateTime?  // Quando a descrição foi editada pelo usuário
+  descriptionSource   String     @default("auto") // "auto" | "manual"
+
   companyId String
   company   Company @relation(fields: [companyId], references: [id])
 

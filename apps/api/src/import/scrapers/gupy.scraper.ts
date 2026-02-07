@@ -3,6 +3,10 @@ import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { JobScraper, ScrapedJob } from './scraper.interface';
 
+/**
+ * Scraper simplificado para Gupy.
+ * Extrai dados básicos - descrição completa é preenchida manualmente.
+ */
 @Injectable()
 export class GupyScraper implements JobScraper {
   private readonly logger = new Logger(GupyScraper.name);
@@ -11,59 +15,37 @@ export class GupyScraper implements JobScraper {
     return url.includes('gupy.io');
   }
 
-  // ===========================================================================
-  // MODO 1: SCRAPE UNITÁRIO (IMPORTAÇÃO MANUAL)
-  // ===========================================================================
   async scrape(url: string, html: string): Promise<ScrapedJob> {
     const $ = cheerio.load(html);
 
-    // Tenta pegar dados estruturados do Next.js (mais confiável)
-    let nextData: any = null;
+    // Tentar extrair dados do Next.js
+    let jobProps: any = null;
     try {
       const scriptContent = $('#__NEXT_DATA__').html();
       if (scriptContent) {
-        nextData = JSON.parse(scriptContent);
+        jobProps = JSON.parse(scriptContent)?.props?.pageProps?.job;
       }
-    } catch (e) {
-      // Ignora erro e usa fallback visual
-    }
+    } catch { }
 
-    const jobProps = nextData?.props?.pageProps?.job;
+    const title = jobProps?.name || $('h1').first().text().trim() || 'Vaga Gupy';
+    const company = jobProps?.careerPage?.name || $("meta[property='og:site_name']").attr('content') || 'Empresa';
 
-    // Prioridade: Dados do JSON > Metatags > Seletores CSS
-    const title =
-      jobProps?.name ||
-      $('h1').first().text().trim() ||
-      $("meta[property='og:title']").attr('content') ||
-      'Vaga Gupy';
+    const location = jobProps?.address?.city && jobProps?.address?.state
+      ? `${jobProps.address.city} - ${jobProps.address.state}`
+      : null;
 
-    const description =
-      jobProps?.description ||
-      $('.description').html() || // Mantém HTML para formatação
-      $('body').text().trim();
+    const isRemote = jobProps?.isRemoteWork ||
+      title.toLowerCase().includes('remoto') ||
+      title.toLowerCase().includes('home office');
 
-    const company =
-      jobProps?.careerPage?.name ||
-      $('.job-company-name').text().trim() ||
-      $("meta[property='og:site_name']").attr('content') ||
-      'Empresa';
+    // Descrição mínima - usuário preenche manualmente
+    const description = 'Descrição pendente. Clique em "Editar" para adicionar.';
 
-    const location =
-      (jobProps?.address?.city && jobProps?.address?.state 
-        ? `${jobProps.address.city} - ${jobProps.address.state}` 
-        : null) ||
-      $('.job-location').text().trim() ||
-      null;
-
-    const isRemote = 
-      jobProps?.isRemoteWork ||
-      description.toLowerCase().includes('remoto') ||
-      location?.toLowerCase().includes('remoto') ||
-      false;
+    this.logger.log(`GupyScraper: ${title} @ ${company}`);
 
     return {
       title,
-      description, // HTML limpo ou texto
+      description,
       location,
       remote: isRemote,
       applyUrl: url,
@@ -72,57 +54,28 @@ export class GupyScraper implements JobScraper {
     };
   }
 
-  // ===========================================================================
-  // MODO 2: LISTAGEM VIA API (CRAWLER AUTOMÁTICO)
-  // ===========================================================================
-  /**
-   * Busca vagas na Gupy.
-   * Estratégia: Acessar página principal -> Extrair jobBoardId -> Bater na API interna
-   * @param slug O subdomínio da empresa (ex: 'nubank' em nubank.gupy.io)
-   */
+  // Crawler para listagem automática de vagas
   async listJobs(slug: string): Promise<ScrapedJob[]> {
     try {
-      // 1. Descobrir o ID da Empresa (jobBoardId)
-      const homeUrl = `https://${slug}.gupy.io/`;
-      this.logger.log(`Acessando home da Gupy para extrair ID: ${homeUrl}`);
-      
-      const { data: homeHtml } = await axios.get(homeUrl);
-      
-      // Procura pelo ID dentro do HTML (geralmente no __NEXT_DATA__ ou config)
-      // Padrão comum: "jobBoardId":12345
-      const match = homeHtml.match(/"jobBoardId":(\d+)/);
-      const jobBoardId = match ? match[1] : null;
+      const { data: html } = await axios.get(`https://${slug}.gupy.io/`);
+      const match = html.match(/"jobBoardId":(\d+)/);
+      if (!match) return [];
 
-      if (!jobBoardId) {
-        this.logger.warn(`Não foi possível encontrar jobBoardId para ${slug}`);
-        return [];
-      }
+      const { data } = await axios.get(
+        `https://portal.api.gupy.io/api/v1/jobs?jobBoardId=${match[1]}&limit=100`
+      );
 
-      // 2. Consultar API da Gupy com o ID encontrado
-      // Endpoint: https://portal.api.gupy.io/api/v1/jobs?jobBoardId={id}&limit=100
-      const apiUrl = `https://portal.api.gupy.io/api/v1/jobs?jobBoardId=${jobBoardId}&limit=100`;
-      this.logger.log(`Consultando API Gupy: ${apiUrl}`);
-
-      const { data: apiResponse } = await axios.get(apiUrl);
-
-      if (!apiResponse.data || !Array.isArray(apiResponse.data)) {
-        return [];
-      }
-
-      // 3. Mapear resultados
-      return apiResponse.data.map((job: any) => ({
-        externalId: String(job.id),
+      return (data.data || []).map((job: any) => ({
         title: job.name,
-        description: job.description, // Gupy API retorna HTML aqui
-        location: job.city && job.state ? `${job.city} - ${job.state}` : 'Remoto/Brasil',
+        description: job.description || '',
+        location: job.city && job.state ? `${job.city} - ${job.state}` : null,
         remote: job.isRemoteWork,
         applyUrl: job.jobUrl,
-        company: { name: slug }, // Nome provisório, o crawler ajusta se tiver info melhor
+        company: { name: slug },
         postedAt: job.publishedDate ? new Date(job.publishedDate) : new Date(),
       }));
-
     } catch (error) {
-      this.logger.error(`Erro ao listar vagas Gupy para ${slug}`, error);
+      this.logger.error(`Erro Gupy listJobs: ${slug}`, error);
       return [];
     }
   }

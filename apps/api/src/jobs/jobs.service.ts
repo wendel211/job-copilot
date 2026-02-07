@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
 import { AtsType, JobSourceType, Prisma } from "@prisma/client";
 
@@ -91,6 +91,7 @@ export class JobsService {
       },
     };
   }
+
   async findRecommendations(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -109,5 +110,48 @@ export class JobsService {
       orderBy: { postedAt: 'desc' },
       take: 5
     });
+  }
+
+  // ========================================================
+  // ATUALIZAR DESCRIÇÃO MANUALMENTE
+  // ========================================================
+  async updateDescription(jobId: string, description: string) {
+    const job = await this.prisma.job.findUnique({
+      where: { id: jobId },
+      select: {
+        id: true,
+        descriptionEditedAt: true,
+        createdAt: true,
+        descriptionSource: true
+      }
+    });
+
+    if (!job) {
+      throw new NotFoundException(`Vaga com ID ${jobId} não encontrada.`);
+    }
+
+    // Verificar janela de edição (24 horas após criação ou última edição)
+    const EDIT_WINDOW_HOURS = 24;
+    const referenceDate = job.descriptionEditedAt || job.createdAt;
+    const hoursSinceReference = (Date.now() - referenceDate.getTime()) / (1000 * 60 * 60);
+
+    if (job.descriptionSource === 'manual' && hoursSinceReference > EDIT_WINDOW_HOURS) {
+      throw new BadRequestException(
+        `Descrição só pode ser editada nas primeiras ${EDIT_WINDOW_HOURS} horas após a última edição.`
+      );
+    }
+
+    // Atualizar descrição
+    const updated = await this.prisma.job.update({
+      where: { id: jobId },
+      data: {
+        description,
+        descriptionSource: 'manual',
+        descriptionEditedAt: new Date(),
+      },
+      include: { company: true }
+    });
+
+    return updated;
   }
 }
