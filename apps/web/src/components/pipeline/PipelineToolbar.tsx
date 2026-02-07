@@ -23,7 +23,7 @@ export function PipelineToolbar({
 }: PipelineToolbarProps) {
   return (
     <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm mb-6 flex flex-col md:flex-row gap-4 justify-between items-center animate-fade-in">
-      
+
       {/* Lado Esquerdo: Busca */}
       <div className="relative w-full md:w-96">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -32,7 +32,7 @@ export function PipelineToolbar({
           placeholder="Filtrar por cargo, empresa ou notas..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm transition-all"
+          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm transition-all text-gray-900 placeholder:text-gray-500"
         />
       </div>
 

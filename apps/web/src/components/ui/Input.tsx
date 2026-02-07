@@ -7,12 +7,12 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ReactNode;
 }
 
-export const Input: React.FC<InputProps> = ({ 
-  label, 
-  error, 
+export const Input: React.FC<InputProps> = ({
+  label,
+  error,
   icon,
-  className = '', 
-  ...props 
+  className = '',
+  ...props
 }) => {
   return (
     <div className="w-full">
@@ -32,6 +32,7 @@ export const Input: React.FC<InputProps> = ({
             w-full px-4 py-2.5 border border-gray-300 rounded-lg
             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
             disabled:bg-gray-50 disabled:text-gray-500
+            text-gray-900 placeholder:text-gray-500
             ${icon ? 'pl-10' : ''}
             ${error ? 'border-red-500' : ''}
             ${className}
