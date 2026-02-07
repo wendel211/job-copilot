@@ -22,7 +22,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Bell,
-  HelpCircle
+  HelpCircle,
+  CreditCard
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { CreditsDisplay } from '@/components/credits/CreditsDisplay';
@@ -60,6 +61,12 @@ const navItems = [
     icon: FileText,
     href: '/drafts',
     color: 'text-rose-500'
+  },
+  {
+    label: 'Planos',
+    icon: CreditCard,
+    href: '/pricing',
+    color: 'text-green-500'
   },
 ];
 

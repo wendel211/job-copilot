@@ -178,11 +178,11 @@ export function CreditsDisplay({ isExpanded = true }: CreditsDisplayProps) {
                                                 <p className="text-sm text-gray-600 mb-3">
                                                     Escaneie o QR Code ou copie o código PIX
                                                 </p>
-                                                <div className="bg-white border-2 border-gray-200 rounded-xl p-4 inline-block mb-4">
+                                                <div className="bg-white border-2 border-gray-200 rounded-xl p-4 inline-flex justify-center mb-4">
                                                     <img
                                                         src={purchase.pixQrCode}
                                                         alt="QR Code PIX"
-                                                        className="w-48 h-48"
+                                                        className="w-56 h-56 object-contain"
                                                     />
                                                 </div>
                                             </>

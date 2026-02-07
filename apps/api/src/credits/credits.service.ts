@@ -2,7 +2,24 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AbacatePayService } from './abacatepay.service';
 
-const CREDIT_PRICE_CENTS = 500; // R$5 por crédito
+// Tabela de preços por quantidade de créditos (em centavos)
+const PRICE_TABLE: Record<number, number> = {
+    1: 500,      // R$5,00
+    10: 1999,    // R$19,99
+    50: 5990,    // R$59,90
+};
+
+// Preço padrão se não estiver na tabela
+const DEFAULT_PRICE_PER_CREDIT = 500; // R$5 por crédito
+
+function getPrice(quantity: number): number {
+    // Se a quantidade está na tabela, usa o preço fixo
+    if (PRICE_TABLE[quantity]) {
+        return PRICE_TABLE[quantity];
+    }
+    // Caso contrário, calcula pelo preço unitário
+    return quantity * DEFAULT_PRICE_PER_CREDIT;
+}
 
 @Injectable()
 export class CreditsService {
@@ -46,7 +63,7 @@ export class CreditsService {
 
     // Cria PIX QR Code para comprar créditos
     async createPurchase(userId: string, quantity: number = 1) {
-        const amountCents = quantity * CREDIT_PRICE_CENTS;
+        const amountCents = getPrice(quantity);
 
         // Criar registro de compra pendente
         const purchase = await this.prisma.creditPurchase.create({
