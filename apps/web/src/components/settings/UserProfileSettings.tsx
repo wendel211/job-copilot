@@ -130,13 +130,14 @@ export function UserProfileSettings() {
           <CardHeader><CardTitle className="text-lg">Dados Profissionais</CardTitle></CardHeader>
           <CardContent className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Cargo (Headline)</label>
-              <Input className="text-gray-900 placeholder:text-gray-500" placeholder="Ex: Senior Frontend Dev" value={profile.headline} onChange={e => setProfile({ ...profile, headline: e.target.value })} />
+              <label className="text-sm font-medium text-gray-700">Cargo (Headline) <span className="text-xs text-gray-400">({profile.headline.length}/100)</span></label>
+              <Input className="text-gray-900 placeholder:text-gray-500" placeholder="Ex: Senior Frontend Dev" maxLength={100} value={profile.headline} onChange={e => setProfile({ ...profile, headline: e.target.value })} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Bio</label>
+              <label className="text-sm font-medium text-gray-700">Bio <span className="text-xs text-gray-400">({profile.bio.length}/500)</span></label>
               <textarea
                 rows={4}
+                maxLength={500}
                 className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none resize-none text-gray-900 placeholder:text-gray-500"
                 placeholder="Resumo profissional..."
                 value={profile.bio}
@@ -144,9 +145,9 @@ export function UserProfileSettings() {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-gray-700">Skills</label>
-              <p className="text-xs text-gray-500 mb-2">Tecnologias que você domina (Enter para adicionar).</p>
-              <SkillsInput value={profile.skills} onChange={skills => setProfile({ ...profile, skills })} />
+              <label className="text-sm font-medium text-gray-700">Skills <span className="text-xs text-gray-400">({profile.skills.length}/30)</span></label>
+              <p className="text-xs text-gray-500 mb-2">Tecnologias que você domina (Enter para adicionar). Máximo 30.</p>
+              <SkillsInput value={profile.skills} onChange={skills => setProfile({ ...profile, skills: skills.slice(0, 30) })} />
             </div>
             <div className="pt-4 flex justify-end">
               <Button type="submit" disabled={saving} isLoading={saving}>
