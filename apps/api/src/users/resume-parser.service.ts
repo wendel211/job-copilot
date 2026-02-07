@@ -37,20 +37,8 @@ export class ResumeParserService {
     async parseResume(filePath: string): Promise<ExtractedResumeData> {
         this.logger.log(`Parsing resume file: ${filePath}`);
         try {
-            this.logger.log(`PDF Import Type: ${typeof pdf}, Value: ${JSON.stringify(pdf)}`);
-
-            let pdfParser = pdf;
-            // Robust check for CommonJS/ESM interop
-            if (typeof pdfParser !== 'function' && pdfParser.default) {
-                pdfParser = pdfParser.default;
-            }
-
-            if (typeof pdfParser !== 'function') {
-                throw new Error(`PDF Parser is not a function. It is: ${typeof pdfParser}`);
-            }
-
             const dataBuffer = fs.readFileSync(filePath);
-            const data = await pdfParser(dataBuffer);
+            const data = await pdf(dataBuffer);
             this.logger.log(`PDF Parsed successfully. Text length: ${data.text?.length}`);
             const text = data.text;
 

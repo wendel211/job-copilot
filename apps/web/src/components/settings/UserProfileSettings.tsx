@@ -72,9 +72,22 @@ export function UserProfileSettings() {
 
     const toastId = toast.loading('Enviando currículo...');
     try {
-      await userApi.uploadResume(file);
-      setProfile(prev => ({ ...prev, resumeUrl: 'uploaded' }));
-      toast.success('Currículo enviado!', { id: toastId });
+      const result = await userApi.uploadResume(file);
+
+      // Use the extracted profile data returned from the API
+      if (result.profile) {
+        setProfile(prev => ({
+          ...prev,
+          resumeUrl: result.profile.resumeUrl || 'uploaded',
+          skills: result.profile.skills || prev.skills,
+          headline: result.profile.headline || prev.headline,
+          bio: result.profile.bio || prev.bio,
+        }));
+        toast.success('Currículo enviado e dados extraídos!', { id: toastId });
+      } else {
+        setProfile(prev => ({ ...prev, resumeUrl: 'uploaded' }));
+        toast.success('Currículo enviado!', { id: toastId });
+      }
     } catch (error) {
       toast.error('Falha no upload.', { id: toastId });
     }
