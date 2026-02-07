@@ -89,19 +89,27 @@ export class UsersController {
   ) {
     const userId = req.user.id;
 
-    await this.usersService.updateResume(userId, file.path);
+    try {
+      console.log(`[Upload Debug] Processing file: ${file.originalname} (${file.size} bytes)`);
+      console.log(`[Upload Debug] Path: ${file.path}`);
 
-    // Retornar o perfil atualizado para o frontend já pegar as skills novas
-    const updatedProfile = await this.usersService.getProfile(userId);
+      await this.usersService.updateResume(userId, file.path);
 
-    // Debug logging
-    console.log('Upload successful, returning profile:', updatedProfile.id);
+      // Retornar o perfil atualizado para o frontend já pegar as skills novas
+      const updatedProfile = await this.usersService.getProfile(userId);
 
-    return {
-      message: 'Currículo enviado e processado com sucesso',
-      filename: file.filename,
-      file: file, // opcional, debug
-      profile: updatedProfile
-    };
+      // Debug logging
+      console.log('[Upload Debug] Upload successful, returning profile:', updatedProfile.id);
+
+      return {
+        message: 'Currículo enviado e processado com sucesso',
+        filename: file.filename,
+        file: file, // opcional, debug
+        profile: updatedProfile
+      };
+    } catch (error) {
+      console.error('[Upload Debug] Error processing resume:', error);
+      throw error;
+    }
   }
 }
