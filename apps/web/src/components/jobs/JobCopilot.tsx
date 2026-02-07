@@ -73,37 +73,80 @@ export function JobCopilot({ job }: JobCopilotProps) {
     setStatus('none');
   }, [job.id]);
 
-  // 2. Análise de Match (usando profile real)
+  // 2. Análise de Match (usando profile real - SEM fallback de 50%)
   const matchAnalysis = useMemo(() => {
     if (!job?.description) return { found: [], missing: [], score: 0 };
     const descriptionLower = job.description.toLowerCase();
     const titleLower = job.title?.toLowerCase() || '';
 
-    // Skills do usuário (lowercase para comparação)
+    // Skills do usuário
     const userSkillsLower = userProfile.skills.map(s => s.toLowerCase());
 
-    // Skills detectadas na vaga
-    const skillsInJob = TECH_KEYWORDS.filter(tech => descriptionLower.includes(tech.toLowerCase()));
+    // Sem skills no perfil = 0% de match
+    if (userSkillsLower.length === 0) {
+      return { found: [], missing: [], score: 0 };
+    }
 
-    // Skills que o usuário tem e a vaga pede
-    const found = skillsInJob.filter(skill => userSkillsLower.includes(skill.toLowerCase()));
-    const missing = skillsInJob.filter(skill => !userSkillsLower.includes(skill.toLowerCase()));
+    // Método 1: Skills do usuário que aparecem diretamente na descrição da vaga
+    const directSkillMatches = userProfile.skills.filter(skill =>
+      descriptionLower.includes(skill.toLowerCase())
+    );
 
-    // Base score: % de skills da vaga que o usuário tem
-    let score = skillsInJob.length > 0
-      ? Math.round((found.length / skillsInJob.length) * 100)
-      : 50;
+    // Método 2: Tech keywords da vaga
+    const techKeywordsInJob = TECH_KEYWORDS.filter(tech => descriptionLower.includes(tech.toLowerCase()));
+    const techFound = techKeywordsInJob.filter(skill => userSkillsLower.includes(skill.toLowerCase()));
+    const techMissing = techKeywordsInJob.filter(skill => !userSkillsLower.includes(skill.toLowerCase()));
 
-    // Bonus: Headline match (se o cargo do usuário aparece no título da vaga)
+    // Combina resultados (remove duplicatas)
+    const allFound = [...new Set([...directSkillMatches.map(s => s.toLowerCase()), ...techFound.map(s => s.toLowerCase())])];
+
+    // Calcular score baseado em múltiplos fatores
+    let score = 0;
+    let factors = 0;
+
+    // Fator 1: % de skills do usuário que aparecem na vaga (peso 50%)
+    if (userProfile.skills.length > 0) {
+      const directMatchPercent = (directSkillMatches.length / userProfile.skills.length) * 100;
+      score += directMatchPercent * 0.5;
+      factors++;
+    }
+
+    // Fator 2: % de tech keywords da vaga que o usuário tem (peso 50%)
+    if (techKeywordsInJob.length > 0) {
+      const techMatchPercent = (techFound.length / techKeywordsInJob.length) * 100;
+      score += techMatchPercent * 0.5;
+      factors++;
+    }
+
+    // Normaliza se só temos 1 fator
+    if (factors === 1) {
+      score = score * 2;
+    }
+
+    // Bonus: Headline match (+15%)
     if (userProfile.headline) {
       const headlineWords = userProfile.headline.toLowerCase().split(/\s+/).filter(w => w.length > 3);
       const headlineMatch = headlineWords.some(word => titleLower.includes(word) || descriptionLower.includes(word));
       if (headlineMatch) {
-        score = Math.min(100, score + 10); // +10% bonus
+        score = Math.min(100, score + 15);
       }
     }
 
-    return { found, missing, score };
+    // Bonus: Bio keywords match (+10%)
+    if (userProfile.bio) {
+      const bioWords = userProfile.bio.toLowerCase().split(/\s+/).filter(w => w.length > 4);
+      const significantBioWords = bioWords.slice(0, 20); // Pegar apenas 20 palavras mais importantes
+      const bioMatches = significantBioWords.filter(word => descriptionLower.includes(word)).length;
+      if (bioMatches >= 3) {
+        score = Math.min(100, score + 10);
+      }
+    }
+
+    return {
+      found: allFound.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
+      missing: techMissing,
+      score: Math.round(score)
+    };
   }, [job, userProfile]);
 
   // 3. Gerar Template
