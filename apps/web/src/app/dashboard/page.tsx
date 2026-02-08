@@ -331,7 +331,7 @@ export default function DashboardPage() {
                   Dica Pro
                 </h3>
                 <p className="text-sm text-emerald-50 leading-relaxed">
-                  Candidatos que enviam emails personalizados têm <strong>3x mais chances</strong> de resposta. Use o gerador de IA!
+                  Mantenha seu perfil atualizado e acompanhe suas candidaturas diariamente para aumentar suas chances!
                 </p>
               </div>
             </div>

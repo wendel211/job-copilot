@@ -4,16 +4,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import {
-  Mail,
   Sparkles,
-  Send,
   Bookmark,
   Loader2,
-  ArrowRight,
   Check,
   X,
   Edit3,
-  Save
+  Save,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Job, pipelineApi, userApi, jobsApi } from '@/lib/api';
@@ -109,10 +107,6 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
 
   // User Profile State
   const [userProfile, setUserProfile] = useState<UserProfile>({ skills: [], headline: '', bio: '' });
-
-  // Estados de Texto
-  const [emailSubject, setEmailSubject] = useState('');
-  const [emailBody, setEmailBody] = useState('');
 
   // Estados de Controle
   const [isLoading, setIsLoading] = useState(false);
@@ -304,16 +298,6 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     };
   }, [job, userProfile]);
 
-  // 3. Gerar Template
-  useEffect(() => {
-    if (job) {
-      const subject = `Candidatura para ${job.title} - [Seu Nome]`;
-      const body = `Olá, time de recrutamento da ${job.company.name}.\n\nMe chamo [Seu Nome] e estou muito interessado na vaga de ${job.title}.\n\nTenho experiência sólida com as tecnologias que vocês buscam:\n${matchAnalysis.found.length > 0 ? matchAnalysis.found.map(s => `- ${s.charAt(0).toUpperCase() + s.slice(1)}`).join('\n') : '- React e Ecossistema Web'}\n\nFico à disposição.\n\nAtenciosamente,\n[Seu Nome]`;
-      setEmailSubject(subject);
-      setEmailBody(body);
-    }
-  }, [job, matchAnalysis]);
-
   // --- LÓGICA DE TOGGLE (SALVAR / DESALVAR) ---
   const handleToggleSave = async () => {
     if (!userId) return;
@@ -340,8 +324,8 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     }
   };
 
-  // --- LÓGICA DE APLICAR ---
-  const handleSendEmail = async () => {
+  // --- LÓGICA DE MARCAR COMO APLICADO ---
+  const handleMarkAsApplied = async () => {
     if (!userId) return;
     setIsLoading(true);
 
@@ -354,14 +338,11 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
         setSavedJobId(saved.id);
       }
 
-      // 2. Simula envio (aqui entraria sua API de email real)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // 3. Move para Applied
+      // 2. Move para Applied
       await pipelineApi.updateStatus(currentSavedId, 'applied');
 
       setStatus('applied');
-      toast.success('Vaga movida para "Candidaturas Enviadas"!');
+      toast.success('Vaga marcada como "Candidatura Enviada"!');
     } catch (error) {
       toast.error('Erro ao processar candidatura.');
     } finally {
@@ -369,8 +350,13 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     }
   };
 
-  const handleOpenMailClient = () => {
-    window.open(`mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`, '_blank');
+  // Abre o link original da vaga
+  const handleOpenJobLink = () => {
+    if (job.applyUrl) {
+      window.open(job.applyUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.error('Link da vaga não disponível');
+    }
   };
 
   return (
@@ -535,14 +521,14 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
         )}
       </div>
 
-      {/* SEÇÃO 3: Cartão Principal */}
+      {/* SEÇÃO 3: Ações da Candidatura */}
       <Card className="border shadow-sm overflow-hidden bg-white">
 
-        {/* Header do Card com Botão de Salvar */}
+        {/* Header do Card */}
         <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/30">
           <div className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-blue-600" />
-            <h2 className="font-semibold text-gray-800">Candidatura</h2>
+            <Bookmark className="w-5 h-5 text-blue-600" />
+            <h2 className="font-semibold text-gray-800">Ações</h2>
           </div>
 
           {/* BOTÃO DE SALVAR / DESALVAR (TOGGLE) */}
@@ -578,51 +564,43 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
           </Button>
         </div>
 
-        {/* Corpo do Formulário */}
-        <div className="p-6 space-y-5">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Assunto</label>
-            <input
-              value={emailSubject}
-              onChange={(e) => setEmailSubject(e.target.value)}
-              className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all shadow-sm"
-            />
-          </div>
+        {/* Corpo com Ações */}
+        <div className="p-6 space-y-4">
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Mensagem</label>
-            <textarea
-              value={emailBody}
-              onChange={(e) => setEmailBody(e.target.value)}
-              rows={8}
-              className="w-full p-3 bg-white border border-gray-200 rounded-lg text-sm font-mono leading-relaxed focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-y shadow-sm"
-            />
-          </div>
-
-          {/* Footer de Ações */}
-          <div className="pt-2 flex flex-col gap-3">
-
-            {status === 'applied' ? (
-              <div className="w-full p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-center gap-2 text-green-700 font-medium">
-                <Check className="w-5 h-5" />
-                <span>Candidatura registrada no Pipeline!</span>
+          {status === 'applied' ? (
+            <div className="w-full p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-center gap-2 text-green-700 font-medium">
+              <Check className="w-5 h-5" />
+              <span>Candidatura registrada no Pipeline!</span>
+            </div>
+          ) : (
+            <>
+              {/* Instruções */}
+              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
+                <p className="text-sm text-gray-600 mb-2">
+                  <strong>Como se candidatar:</strong>
+                </p>
+                <ol className="text-sm text-gray-500 space-y-1 list-decimal list-inside">
+                  <li>Clique em "Abrir Vaga" para acessar a página original</li>
+                  <li>Realize sua candidatura diretamente na plataforma</li>
+                  <li>Volte e clique em "Marcar como Aplicado" para registrar</li>
+                </ol>
               </div>
-            ) : (
+
+              {/* Botões de Ação */}
               <div className="flex gap-3">
-                {/* Botão Secundário (Apenas abrir cliente de email) */}
+                {/* Botão para abrir vaga original */}
                 <Button
-                  onClick={handleOpenMailClient}
+                  onClick={handleOpenJobLink}
                   variant="outline"
                   className="flex-1 text-gray-600 border-gray-300 hover:bg-gray-50"
-                  title="Abrir no seu app de email padrão"
                 >
-                  <ArrowRight className="w-4 h-4 mr-2" />
-                  Abrir Email
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Abrir Vaga
                 </Button>
 
-                {/* Botão Primário (Enviar & Aplicar) */}
+                {/* Botão Primário (Marcar como Aplicado) */}
                 <Button
-                  onClick={handleSendEmail}
+                  onClick={handleMarkAsApplied}
                   disabled={isLoading}
                   className="flex-[2] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md transition-all hover:scale-[1.01]"
                 >
@@ -633,20 +611,18 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
                     </>
                   ) : (
                     <>
-                      <Send className="w-4 h-4 mr-2" />
-                      Enviar & Aplicar
+                      <Check className="w-4 h-4 mr-2" />
+                      Marcar como Aplicado
                     </>
                   )}
                 </Button>
               </div>
-            )}
 
-            {status !== 'applied' && (
               <p className="text-center text-[10px] text-gray-400">
-                Ao clicar em "Enviar & Aplicar", a vaga será movida automaticamente para a coluna "Enviado".
+                Ao marcar como aplicado, a vaga será movida para a coluna "Enviado" no seu pipeline.
               </p>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </Card>
     </div>

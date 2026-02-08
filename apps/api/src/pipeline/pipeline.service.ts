@@ -12,7 +12,7 @@ export class PipelineService {
   constructor(
     private prisma: PrismaService,
     private events: EventsService
-  ) {}
+  ) { }
 
   // ============================================================
   // CRIAR OU RETORNAR EXISTENTE
@@ -33,9 +33,9 @@ export class PipelineService {
 
     // Se já existe, retorna o existente (Idempotência)
     if (exists) {
-        return exists;
+      return exists;
     }
-    
+
     // 4. Criar item
     const saved = await this.prisma.savedJob.create({
       data: {
@@ -58,6 +58,18 @@ export class PipelineService {
   }
 
   // ============================================================
+  // VERIFICAR STATUS (Checar se já existe)
+  // ============================================================
+  async checkStatus(userId: string, jobId: string) {
+    const saved = await this.prisma.savedJob.findUnique({
+      where: {
+        userId_jobId: { userId, jobId }
+      }
+    });
+    return saved || null;
+  }
+
+  // ============================================================
   // ATUALIZAR STATUS (Pelo ID do Item)
   // ============================================================
   async updateStatus(id: string, dto: UpdateStatusDto) {
@@ -71,7 +83,7 @@ export class PipelineService {
 
     // Se mudar para applied, atualiza a data
     if (newStatus === SavedJobStatus.applied) {
-        dataToUpdate.appliedAt = new Date();
+      dataToUpdate.appliedAt = new Date();
     }
 
     const updated = await this.prisma.savedJob.update({
@@ -124,16 +136,16 @@ export class PipelineService {
       where: { userId },
       include: {
         job: {
-            include: {
-                company: true 
-            }
+          include: {
+            company: true
+          }
         },
         events: true
       },
       orderBy: { updatedAt: "desc" }
     });
   }
-  
+
   // ============================================================
   // REMOVER (Desalvar)
   // ============================================================
@@ -142,14 +154,14 @@ export class PipelineService {
     if (!exists) throw new NotFoundException("Item not found");
 
     await this.prisma.savedJob.delete({ where: { id } });
-    
+
     return { success: true };
   }
 
   async updateStatusByUserAndJob(
     userId: string,
     jobId: string,
-    status: string | SavedJobStatus 
+    status: string | SavedJobStatus
   ) {
     // 1. Busca existente
     let saved = await this.prisma.savedJob.findUnique({
@@ -159,7 +171,7 @@ export class PipelineService {
     });
 
     if (!saved) {
-       saved = await this.create({ userId, jobId });
+      saved = await this.create({ userId, jobId });
     }
 
     return this.updateStatus(saved.id, {

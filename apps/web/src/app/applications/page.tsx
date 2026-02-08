@@ -8,14 +8,14 @@ import { Card, CardContent } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/Loading';
-import { 
-  Calendar, 
-  Building2, 
-  CheckCircle2, 
-  ArrowRight, 
-  ExternalLink, 
-  Copy,      
-  CopyCheck,  
+import {
+  Calendar,
+  Building2,
+  CheckCircle2,
+  ArrowRight,
+  ExternalLink,
+  Copy,
+  CopyCheck,
   XCircle,
   Clock,
   Trophy
@@ -23,7 +23,7 @@ import {
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { toast } from 'sonner'; 
+import { toast } from 'sonner';
 
 interface ApplicationItem {
   id: string;
@@ -43,7 +43,7 @@ export default function ApplicationsPage() {
   const { userId } = useAppStore();
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Estado para controlar qual item foi copiado recentemente (para mudar o ícone)
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -52,16 +52,16 @@ export default function ApplicationsPage() {
       if (!userId) return;
       try {
         const items = await pipelineApi.getAll(userId);
-        
+
         // Filtra e ordena (mais recentes primeiro)
         const applied = items
-          .filter((item: any) => 
+          .filter((item: any) =>
             ['applied', 'interview', 'offer', 'rejected'].includes(item.status)
           )
           .sort((a: any, b: any) => {
-             const dateA = new Date(a.appliedAt || a.createdAt).getTime();
-             const dateB = new Date(b.appliedAt || b.createdAt).getTime();
-             return dateB - dateA;
+            const dateA = new Date(a.appliedAt || a.createdAt).getTime();
+            const dateB = new Date(b.appliedAt || b.createdAt).getTime();
+            return dateB - dateA;
           })
           .map((item: any): ApplicationItem => ({
             id: item.id,
@@ -109,7 +109,7 @@ export default function ApplicationsPage() {
   return (
     <AppShell>
       <div className="space-y-6 animate-in fade-in pb-10">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-200 pb-5">
           <div>
@@ -133,7 +133,7 @@ export default function ApplicationsPage() {
             </div>
             <h3 className="text-xl font-semibold text-gray-900">Nenhuma candidatura registrada</h3>
             <p className="text-gray-500 max-w-md mx-auto mt-2 mb-8 leading-relaxed">
-              Utilize o <strong>JobCopilot</strong> nas páginas de vagas para gerar emails e clique em "Já me candidatei" para rastrear seu progresso aqui.
+              Utilize o <strong>JobCopilot</strong> nas páginas de vagas para acompanhar o match e clique em "Marcar como Aplicado" para rastrear seu progresso aqui.
             </p>
             <Link href="/jobs">
               <Button size="lg" className="flex justify-center tems-center  shadow-lg shadow-blue-500/20">
@@ -150,7 +150,7 @@ export default function ApplicationsPage() {
               return (
                 <Card key={app.id} className="hover:shadow-md transition-all duration-200 group border-l-4 border-l-transparent hover:border-l-blue-500">
                   <CardContent className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    
+
                     {/* Info Vaga */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
@@ -159,19 +159,19 @@ export default function ApplicationsPage() {
                         </h3>
                         <div className="flex gap-1.5 items-center px-2.5 py-0.5">
                           <Badge variant={statusConfig.color as any} size="sm">
-                            {statusConfig.icon} 
+                            {statusConfig.icon}
                             {statusConfig.label}
                           </Badge>
                         </div>
                       </div>
-                      
+
                       <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500">
                         <div className="flex items-center gap-1.5 font-medium text-gray-700">
-                          <Building2 className="w-4 h-4 text-gray-400" /> 
+                          <Building2 className="w-4 h-4 text-gray-400" />
                           {app.job.company.name}
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <Calendar className="w-4 h-4 text-gray-400" /> 
+                          <Calendar className="w-4 h-4 text-gray-400" />
                           Aplicado em: <span className="text-gray-700 font-medium">
                             {app.appliedAt ? format(new Date(app.appliedAt), "dd 'de' MMM, yyyy", { locale: ptBR }) : 'Data n/a'}
                           </span>
@@ -181,7 +181,7 @@ export default function ApplicationsPage() {
 
                     {/* Ações */}
                     <div className="flex items-center gap-2 self-start md:self-center shrink-0">
-                      
+
                       {/* Botão de Copiar (Com o ícone copy-check quando clicado) */}
                       <Button
                         variant="ghost"
@@ -198,7 +198,7 @@ export default function ApplicationsPage() {
                           Vaga Original <ExternalLink className="w-3 h-3" />
                         </Button>
                       </a>
-                      
+
                       <Link href={`/jobs/${app.job.id}`}>
                         <Button size="sm" className="pl-4 pr-3 gap-2">
                           Detalhes <ArrowRight className="w-4 h-4" />

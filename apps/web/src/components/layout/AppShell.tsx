@@ -56,12 +56,7 @@ const navItems = [
     href: '/pipeline',
     color: 'text-amber-500'
   },
-  {
-    label: 'Rascunhos',
-    icon: FileText,
-    href: '/drafts',
-    color: 'text-rose-500'
-  },
+
   {
     label: 'Planos',
     icon: CreditCard,
