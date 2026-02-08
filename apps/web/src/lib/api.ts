@@ -283,6 +283,11 @@ export const pipelineApi = {
     return response.data;
   },
 
+  async checkStatus(userId: string, jobId: string): Promise<SavedJob | null> {
+    const response = await apiClient.get('/pipeline/check', { params: { userId, jobId } });
+    return response.data;
+  },
+
   async getAll(userId: string): Promise<SavedJob[]> {
     return this.list(userId);
   },

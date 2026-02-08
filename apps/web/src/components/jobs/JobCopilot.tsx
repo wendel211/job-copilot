@@ -171,12 +171,46 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     loadProfile();
   }, []);
 
-  // 1. Verifica status inicial (Simulação - ideal seria a API retornar isso na busca)
+  // 1. Verifica status inicial
   useEffect(() => {
-    // Resetar estados ao mudar de vaga
-    setSavedJobId(null);
-    setStatus('none');
-  }, [job.id]);
+    let isMounted = true;
+
+    async function checkStatus() {
+      if (!job?.id || !userId) return;
+
+      // Não seta loading global pra não piscar a tela toda, talvez um local se precisasse
+      // Mas como é rápido, vamos deixar sem loading explicito ou usar um estado local se quiser
+
+      try {
+        const saved = await pipelineApi.checkStatus(userId, job.id);
+
+        if (isMounted) {
+          if (saved) {
+            setSavedJobId(saved.id);
+
+            // Mapear status do backend para o frontend
+            // Status que consideram como "JÁ APLICADO" (Verde)
+            const appliedStatuses = ['applied', 'sent', 'screening', 'interview', 'offer', 'rejected', 'closed'];
+
+            if (appliedStatuses.includes(saved.status)) {
+              setStatus('applied');
+            } else {
+              setStatus('saved');
+            }
+          } else {
+            setSavedJobId(null);
+            setStatus('none');
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao verificar status:', error);
+      }
+    }
+
+    checkStatus();
+
+    return () => { isMounted = false; };
+  }, [job.id, userId]);
 
   // 2. Análise de Match (usando profile real - SEM fallback de 50%)
   const matchAnalysis = useMemo(() => {
