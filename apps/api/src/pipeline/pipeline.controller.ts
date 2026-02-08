@@ -1,4 +1,4 @@
-import { Controller, Post, Patch, Get, Param, Body, Query } from "@nestjs/common";
+import { Controller, Post, Patch, Get, Delete, Param, Body, Query } from "@nestjs/common";
 import { ApiTags, ApiOperation } from "@nestjs/swagger";
 import { PipelineService } from "./pipeline.service";
 import { UpdateStatusDto } from "./dto/update-status.dto";
@@ -47,5 +47,11 @@ export class PipelineController {
   @ApiOperation({ summary: "Listar todas as vagas salvas do usuário" })
   list(@Param("userId") userId: string) {
     return this.service.listByUser(userId);
+  }
+
+  @Delete(":id")
+  @ApiOperation({ summary: "Remover vaga do pipeline" })
+  delete(@Param("id") id: string) {
+    return this.service.delete(id);
   }
 }

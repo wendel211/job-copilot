@@ -338,7 +338,14 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     setIsLoading(true);
 
     try {
-      if (status === 'saved' && savedJobId) {
+      // Permite remover se estiver salvo OU aplicado
+      if ((status === 'saved' || status === 'applied') && savedJobId) {
+        // Confirmar se for aplicado, pois é uma ação mais "forte"
+        if (status === 'applied' && !confirm('Remover desta vaga do seu pipeline? Isso apagará o status "Aplicado".')) {
+          setIsLoading(false); // Ensure loading state is reset if user cancels
+          return;
+        }
+
         // DESALVAR (Remover do pipeline)
         await pipelineApi.delete(savedJobId);
         setSavedJobId(null);
@@ -568,15 +575,16 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
           {/* BOTÃO DE SALVAR / DESALVAR (TOGGLE) */}
           <Button
             onClick={handleToggleSave}
-            disabled={isLoading || status === 'applied'}
+            disabled={isLoading}
             variant="ghost"
             size="sm"
             className={`
               transition-all duration-200 gap-2 border
               ${status === 'saved'
                 ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
-                : 'text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
-              ${status === 'applied' ? 'opacity-50 cursor-not-allowed' : ''}
+                : status === 'applied'
+                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
+                  : 'text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
             `}
           >
             {status === 'saved' ? (
@@ -587,6 +595,7 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
             ) : status === 'applied' ? (
               <>
                 <Check className="w-4 h-4" />
+                {/* Texto muda no hover via CSS se quisesse, mas aqui vamos deixar fixo por enquanto, user entende pelo icone X ou tooltip futuramente */}
                 Aplicado
               </>
             ) : (
