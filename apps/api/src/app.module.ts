@@ -18,6 +18,7 @@ import { StatsModule } from "./stats/stats.module";
 import { AuthModule } from "./auth/auth.module";
 
 import { UsersModule } from "./users/users.module";
+import { AiModule } from "./ai/ai.module";
 
 @Module({
   imports: [
@@ -46,6 +47,9 @@ import { UsersModule } from "./users/users.module";
 
     // Dashboards
     StatsModule,
+
+    // AI Scanner
+    AiModule,
   ],
 })
 export class AppModule { }

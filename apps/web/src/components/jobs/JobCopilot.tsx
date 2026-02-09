@@ -1,175 +1,42 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import {
   Sparkles,
   Bookmark,
-  Loader2,
   Check,
-  X,
-  Edit3,
-  Save,
-  ExternalLink
+  ExternalLink,
+  Lock,
+  FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Job, pipelineApi, userApi, jobsApi } from '@/lib/api';
+import { pipelineApi, jobsApi } from '@/lib/api';
 import { useAppStore } from '@/lib/store';
 
 interface JobCopilotProps {
-  job: Job;
-  onJobUpdate?: (updatedJob: Job) => void;
+  job: {
+    id: string;
+    title: string;
+    description: string;
+    applyUrl: string;
+    descriptionEditedAt?: string | null;
+    descriptionSource?: 'auto' | 'manual';
+    [key: string]: any;
+  };
+  onJobUpdate?: (updatedJob: any) => void;
 }
-
-interface UserProfile {
-  skills: string[];
-  headline: string;
-  bio: string;
-}
-
-// Lista expandida de tecnologias para melhor detecção de skills
-const TECH_KEYWORDS = [
-  // Frontend
-  'react', 'reactjs', 'react.js', 'vue', 'vuejs', 'vue.js', 'angular', 'angularjs', 'svelte', 'next.js', 'nextjs', 'nuxt', 'nuxtjs', 'gatsby',
-  'html', 'html5', 'css', 'css3', 'sass', 'scss', 'less', 'tailwind', 'tailwindcss', 'bootstrap', 'material-ui', 'mui', 'chakra', 'styled-components',
-  'webpack', 'vite', 'rollup', 'parcel', 'esbuild', 'babel',
-
-  // Linguagens
-  'javascript', 'typescript', 'java', 'python', 'c#', 'csharp', '.net', 'dotnet', 'c++', 'cpp', 'go', 'golang', 'rust', 'ruby', 'php', 'kotlin', 'swift', 'scala', 'elixir', 'clojure',
-
-  // Backend
-  'node', 'nodejs', 'node.js', 'express', 'expressjs', 'nestjs', 'nest.js', 'fastify', 'koa', 'hapi',
-  'spring', 'springboot', 'spring boot', 'django', 'flask', 'fastapi', 'rails', 'ruby on rails', 'laravel', 'symfony',
-
-  // Banco de Dados
-  'sql', 'postgresql', 'postgres', 'mysql', 'mariadb', 'oracle', 'sqlserver', 'sql server', 'mongodb', 'mongo', 'redis', 'elasticsearch', 'cassandra', 'dynamodb', 'firebase', 'firestore', 'supabase', 'prisma',
-
-  // Cloud e DevOps
-  'aws', 'amazon web services', 'azure', 'gcp', 'google cloud', 'heroku', 'vercel', 'netlify', 'digitalocean',
-  'docker', 'kubernetes', 'k8s', 'terraform', 'ansible', 'jenkins', 'github actions', 'gitlab ci', 'circleci', 'ci/cd', 'cicd',
-  'linux', 'ubuntu', 'nginx', 'apache',
-
-  // API e Protocolos
-  'rest', 'restful', 'api rest', 'graphql', 'grpc', 'websocket', 'soap', 'microservices', 'microsserviços',
-
-  // Mobile
-  'react native', 'flutter', 'dart', 'ios', 'android', 'kotlin', 'swift', 'expo',
-
-  // Ferramentas e Outros
-  'git', 'github', 'gitlab', 'bitbucket', 'jira', 'confluence', 'figma', 'sketch', 'adobe xd',
-  'agile', 'scrum', 'kanban', 'tdd', 'bdd', 'solid', 'clean code', 'design patterns',
-  'jest', 'mocha', 'cypress', 'playwright', 'selenium', 'junit', 'pytest',
-  'rabbitmq', 'kafka', 'sqs', 'sns', 'pub/sub',
-
-  // Data e AI
-  'machine learning', 'ml', 'deep learning', 'ai', 'inteligência artificial', 'tensorflow', 'pytorch', 'pandas', 'numpy', 'data science', 'big data', 'spark', 'hadoop', 'dbt', 'airflow', 'etl',
-
-  // Segurança
-  'oauth', 'jwt', 'auth', 'autenticação', 'segurança', 'security', 'ssl', 'tls'
-];
-
-// Mapa de sinônimos para normalização (key -> valor canônico)
-const SKILL_ALIASES: Record<string, string> = {
-  'js': 'javascript',
-  'ts': 'typescript',
-  'reactjs': 'react',
-  'react.js': 'react',
-  'vuejs': 'vue',
-  'vue.js': 'vue',
-  'angularjs': 'angular',
-  'nodejs': 'node.js',
-  'node': 'node.js',
-  'expressjs': 'express',
-  'nest.js': 'nestjs',
-  'nextjs': 'next.js',
-  'nuxtjs': 'nuxt',
-  'postgres': 'postgresql',
-  'mongo': 'mongodb',
-  'k8s': 'kubernetes',
-  'csharp': 'c#',
-  'dotnet': '.net',
-  'golang': 'go',
-  'amazon web services': 'aws',
-  'google cloud': 'gcp',
-  'microsserviços': 'microservices',
-  'restful': 'rest',
-  'api rest': 'rest',
-  'cicd': 'ci/cd',
-  'springboot': 'spring boot',
-  'ruby on rails': 'rails',
-  'sql server': 'sqlserver',
-  'inteligência artificial': 'ai'
-};
 
 export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
   const { userId } = useAppStore();
 
-  // User Profile State
-  const [userProfile, setUserProfile] = useState<UserProfile>({ skills: [], headline: '', bio: '' });
-
   // Estados de Controle
   const [isLoading, setIsLoading] = useState(false);
-  const [savedJobId, setSavedJobId] = useState<string | null>(null); // ID para poder deletar
+  const [savedJobId, setSavedJobId] = useState<string | null>(null);
   const [status, setStatus] = useState<'none' | 'saved' | 'applied'>('none');
 
-  // Estados para edição de descrição
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [editedDescription, setEditedDescription] = useState(job.description || '');
-  const [isSavingDescription, setIsSavingDescription] = useState(false);
-
-  // Atualizar descrição editada quando job mudar
-  useEffect(() => {
-    setEditedDescription(job.description || '');
-    setIsEditingDescription(false);
-  }, [job.id, job.description]);
-
-  // Função para salvar descrição
-  const handleSaveDescription = async () => {
-    if (editedDescription.trim().length < 50) {
-      toast.error('Descrição deve ter pelo menos 50 caracteres');
-      return;
-    }
-
-    setIsSavingDescription(true);
-    try {
-      const updatedJob = await jobsApi.updateDescription(job.id, editedDescription.trim());
-      toast.success('Descrição atualizada! O match será recalculado.');
-      setIsEditingDescription(false);
-      // Notificar componente pai sobre atualização
-      if (onJobUpdate) {
-        onJobUpdate(updatedJob);
-      }
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Erro ao salvar descrição';
-      toast.error(message);
-    } finally {
-      setIsSavingDescription(false);
-    }
-  };
-
-  // Cancelar edição
-  const handleCancelEdit = () => {
-    setEditedDescription(job.description || '');
-    setIsEditingDescription(false);
-  };
-
-  // 0. Load user profile
-  useEffect(() => {
-    async function loadProfile() {
-      try {
-        const data = await userApi.getProfile();
-        setUserProfile({
-          skills: data.skills || [],
-          headline: data.headline || '',
-          bio: data.bio || '',
-        });
-      } catch (error) {
-        console.error('Failed to load user profile for match calculation');
-      }
-    }
-    loadProfile();
-  }, []);
+  // Verificar se a descrição já foi editada
+  const hasDescription = job.description && job.description.length > 50;
 
   // 1. Verifica status inicial
   useEffect(() => {
@@ -178,20 +45,13 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     async function checkStatus() {
       if (!job?.id || !userId) return;
 
-      // Não seta loading global pra não piscar a tela toda, talvez um local se precisasse
-      // Mas como é rápido, vamos deixar sem loading explicito ou usar um estado local se quiser
-
       try {
         const saved = await pipelineApi.checkStatus(userId, job.id);
 
         if (isMounted) {
           if (saved) {
             setSavedJobId(saved.id);
-
-            // Mapear status do backend para o frontend
-            // Status que consideram como "JÁ APLICADO" (Verde)
             const appliedStatuses = ['applied', 'sent', 'screening', 'interview', 'offer', 'rejected', 'closed'];
-
             if (appliedStatuses.includes(saved.status)) {
               setStatus('applied');
             } else {
@@ -208,129 +68,8 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     }
 
     checkStatus();
-
     return () => { isMounted = false; };
   }, [job.id, userId]);
-
-  // 2. Análise de Match (usando profile real - SEM fallback de 50%)
-  const matchAnalysis = useMemo(() => {
-    if (!job?.description && !job?.title) return { found: [], missing: [], score: 0, extractedJobSkills: [] };
-
-    // Combinar título e descrição para análise mais completa
-    const fullJobText = `${job.title || ''} ${job.description || ''}`.toLowerCase();
-
-    // Função para normalizar skill (aplicar aliases)
-    const normalizeSkill = (skill: string): string => {
-      const lower = skill.toLowerCase().trim();
-      return SKILL_ALIASES[lower] || lower;
-    };
-
-    // Função para verificar se uma tech existe no texto usando word boundary
-    const containsSkill = (text: string, skill: string): boolean => {
-      // Escapar caracteres especiais de regex
-      const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Usar word boundary para evitar falsos positivos (ex: "go" em "google")
-      const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-      return regex.test(text);
-    };
-
-    // Extrair todas as skills encontradas na vaga (descrição + título)
-    const extractedJobSkills: string[] = [];
-    for (const tech of TECH_KEYWORDS) {
-      if (containsSkill(fullJobText, tech)) {
-        const normalized = normalizeSkill(tech);
-        if (!extractedJobSkills.includes(normalized)) {
-          extractedJobSkills.push(normalized);
-        }
-      }
-    }
-
-    // Normalizar skills do usuário
-    const userSkillsNormalized = userProfile.skills.map(s => normalizeSkill(s));
-
-    // Sem skills no perfil = 0% de match
-    if (userSkillsNormalized.length === 0) {
-      return { found: [], missing: extractedJobSkills, score: 0, extractedJobSkills };
-    }
-
-    // Encontrar matches entre skills do usuário e skills da vaga
-    const foundSkills: string[] = [];
-    const missingSkills: string[] = [];
-
-    for (const jobSkill of extractedJobSkills) {
-      if (userSkillsNormalized.includes(jobSkill)) {
-        if (!foundSkills.includes(jobSkill)) {
-          foundSkills.push(jobSkill);
-        }
-      } else {
-        if (!missingSkills.includes(jobSkill)) {
-          missingSkills.push(jobSkill);
-        }
-      }
-    }
-
-    // Também verificar skills do usuário que aparecem diretamente no texto (podem não estar na lista TECH_KEYWORDS)
-    for (const userSkill of userProfile.skills) {
-      const normalized = normalizeSkill(userSkill);
-      if (containsSkill(fullJobText, userSkill) && !foundSkills.includes(normalized)) {
-        foundSkills.push(normalized);
-      }
-    }
-
-    // Calcular score baseado em múltiplos fatores
-    let score = 0;
-    let factors = 0;
-
-    // Fator 1: % de skills do usuário que aparecem na vaga (peso 40%)
-    if (userProfile.skills.length > 0) {
-      const directMatchPercent = (foundSkills.length / userProfile.skills.length) * 100;
-      score += directMatchPercent * 0.4;
-      factors++;
-    }
-
-    // Fator 2: % de tech keywords da vaga que o usuário tem (peso 40%)
-    if (extractedJobSkills.length > 0) {
-      const techMatchPercent = (foundSkills.length / extractedJobSkills.length) * 100;
-      score += techMatchPercent * 0.4;
-      factors++;
-    }
-
-    // Normaliza se só temos 1 fator
-    if (factors === 1) {
-      score = score * 2.5; // Ajustar para dar mais peso
-    }
-
-    // Bonus: Headline match (+15%)
-    if (userProfile.headline) {
-      const headlineWords = userProfile.headline.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-      const headlineMatch = headlineWords.some(word => containsSkill(fullJobText, word));
-      if (headlineMatch) {
-        score = Math.min(100, score + 15);
-      }
-    }
-
-    // Bonus: Bio keywords match (+10%)
-    if (userProfile.bio) {
-      const bioWords = userProfile.bio.toLowerCase().split(/\s+/).filter(w => w.length > 4);
-      const significantBioWords = bioWords.slice(0, 20);
-      const bioMatches = significantBioWords.filter(word => containsSkill(fullJobText, word)).length;
-      if (bioMatches >= 3) {
-        score = Math.min(100, score + 10);
-      }
-    }
-
-    // Bonus: Skills muito importantes encontradas (+5% cada, máx 20%)
-    const criticalSkills = ['react', 'node.js', 'typescript', 'python', 'java', 'aws'];
-    const criticalFound = criticalSkills.filter(cs => foundSkills.includes(cs)).length;
-    score = Math.min(100, score + Math.min(criticalFound * 5, 20));
-
-    return {
-      found: foundSkills.map(s => s.charAt(0).toUpperCase() + s.slice(1)),
-      missing: missingSkills.slice(0, 10), // Limitar a 10 para não poluir a UI
-      score: Math.round(Math.min(100, score)),
-      extractedJobSkills
-    };
-  }, [job, userProfile]);
 
   // --- LÓGICA DE TOGGLE (SALVAR / DESALVAR) ---
   const handleToggleSave = async () => {
@@ -338,21 +77,17 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     setIsLoading(true);
 
     try {
-      // Permite remover se estiver salvo OU aplicado
       if ((status === 'saved' || status === 'applied') && savedJobId) {
-        // Confirmar se for aplicado, pois é uma ação mais "forte"
         if (status === 'applied' && !confirm('Remover desta vaga do seu pipeline? Isso apagará o status "Aplicado".')) {
-          setIsLoading(false); // Ensure loading state is reset if user cancels
+          setIsLoading(false);
           return;
         }
 
-        // DESALVAR (Remover do pipeline)
         await pipelineApi.delete(savedJobId);
         setSavedJobId(null);
         setStatus('none');
         toast.info('Vaga removida do pipeline.');
       } else {
-        // SALVAR
         const saved = await pipelineApi.create(userId, job.id);
         setSavedJobId(saved.id);
         setStatus('saved');
@@ -371,7 +106,6 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     setIsLoading(true);
 
     try {
-      // 1. Se não tá salvo, cria. Se tá salvo, usa o ID existente.
       let currentSavedId = savedJobId;
       if (!currentSavedId) {
         const saved = await pipelineApi.create(userId, job.id);
@@ -379,9 +113,7 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
         setSavedJobId(saved.id);
       }
 
-      // 2. Move para Applied
       await pipelineApi.updateStatus(currentSavedId, 'applied');
-
       setStatus('applied');
       toast.success('Vaga marcada como "Candidatura Enviada"!');
     } catch (error) {
@@ -400,274 +132,83 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
     }
   };
 
+  // Navegar para página de análise ATS
+  const handleOpenAnalysis = () => {
+    window.location.href = `/jobs/${job.id}/analysis`;
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
 
-      {/* SEÇÃO 1: Análise de Match */}
-      <div className="bg-gray-900 rounded-xl p-4 text-white shadow-lg">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/10 rounded-full">
-              <Sparkles className="w-5 h-5 text-yellow-400" />
-            </div>
-            <div>
-              <h3 className="font-bold text-base">Match: {matchAnalysis.score}%</h3>
-              <p className="text-xs text-gray-400">
-                {matchAnalysis.extractedJobSkills.length} skills detectadas na vaga
-              </p>
-            </div>
-          </div>
-          {/* Barra de progresso visual */}
-          <div className="hidden sm:block w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className={`h-full transition-all duration-500 ${matchAnalysis.score >= 70 ? 'bg-green-500' :
-                matchAnalysis.score >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                }`}
-              style={{ width: `${matchAnalysis.score}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Skills que você tem */}
-        {matchAnalysis.found.length > 0 && (
-          <div className="mb-2">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-              <Check className="w-3 h-3 text-green-400" /> Skills que você tem:
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {matchAnalysis.found.slice(0, 8).map(skill => (
-                <span key={skill} className="px-2 py-0.5 bg-green-900/50 text-green-300 text-[10px] rounded border border-green-700">
-                  {skill}
-                </span>
-              ))}
-              {matchAnalysis.found.length > 8 && (
-                <span className="px-2 py-0.5 bg-gray-800 text-gray-400 text-[10px] rounded">
-                  +{matchAnalysis.found.length - 8} mais
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Skills que faltam */}
-        {matchAnalysis.missing.length > 0 && (
+      {/* HEADER + AÇÕES */}
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm transition-all hover:shadow-md">
+        <div className="flex flex-col gap-4 mb-2">
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-              <X className="w-3 h-3 text-red-400" /> Skills a desenvolver:
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {matchAnalysis.missing.slice(0, 6).map(skill => (
-                <span key={skill} className="px-2 py-0.5 bg-red-900/30 text-red-300 text-[10px] rounded border border-red-800/50">
-                  {skill}
-                </span>
-              ))}
-              {matchAnalysis.missing.length > 6 && (
-                <span className="px-2 py-0.5 bg-gray-800 text-gray-400 text-[10px] rounded">
-                  +{matchAnalysis.missing.length - 6} mais
-                </span>
-              )}
-            </div>
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-600" />
+              Job Copilot
+            </h2>
+            <p className="text-sm text-gray-500">Workspace inteligente para sua candidatura.</p>
           </div>
-        )}
 
-        {/* Mensagem quando não há skills no perfil */}
-        {userProfile.skills.length === 0 && (
-          <p className="text-xs text-yellow-400 mt-2">
-            ⚠️ Adicione suas skills no perfil para calcular o match.
-          </p>
-        )}
-      </div>
-
-      {/* SEÇÃO 2: Edição de Descrição */}
-      <div className="bg-white border rounded-xl p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Edit3 className="w-4 h-4 text-gray-500" />
-            <h3 className="font-semibold text-gray-800 text-sm">Descrição da Vaga</h3>
-            {job.descriptionSource === 'manual' ? (
-              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] rounded-full font-medium">
-                Manual
-              </span>
+          <div className="flex flex-col gap-3">
+            {/* Status da Descrição */}
+            {!hasDescription ? (
+              <div className="p-3 bg-amber-50 text-amber-800 text-xs rounded-lg border border-amber-100 flex items-start gap-2">
+                <FileText className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>Adicione a descrição da vaga (ao lado) para liberar o ATS Scanner.</span>
+              </div>
             ) : (
-              <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded-full font-medium">
-                Automático
-              </span>
+              <div className="p-3 bg-purple-50 text-purple-800 text-xs rounded-lg border border-purple-100 flex items-center gap-2">
+                <Check className="w-4 h-4 shrink-0" />
+                <span>Descrição adicionada. ATS Scanner liberado!</span>
+              </div>
             )}
-          </div>
 
-          {/* Botão Editar só aparece se ainda não foi editada */}
-          {!isEditingDescription && job.descriptionSource !== 'manual' && (
+            {/* Botão ATS Scanner - Habilitado apenas se tem descrição */}
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsEditingDescription(true)}
-              className="text-xs text-blue-600 hover:text-blue-700"
+              onClick={handleOpenAnalysis}
+              disabled={!hasDescription}
+              className={`w-full text-white shadow-lg transition-all hover:scale-[1.02] ${hasDescription
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-200'
+                  : 'bg-gray-300 cursor-not-allowed shadow-none'
+                }`}
             >
-              <Edit3 className="w-3 h-3 mr-1" />
-              Adicionar Descrição
+              <Sparkles className="w-4 h-4 mr-2" />
+              Rodar ATS Scanner
             </Button>
-          )}
-        </div>
 
-        {isEditingDescription ? (
-          <div className="space-y-3">
-            <textarea
-              value={editedDescription}
-              onChange={(e) => setEditedDescription(e.target.value)}
-              placeholder="Cole aqui a descrição completa da vaga, incluindo requisitos, responsabilidades e qualificações..."
-              className="w-full h-48 p-3 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-gray-400">
-                {editedDescription.length} caracteres (mín. 50)
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCancelEdit}
-                  disabled={isSavingDescription}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSaveDescription}
-                  disabled={isSavingDescription || editedDescription.trim().length < 50}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  {isSavingDescription ? (
-                    <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                  ) : (
-                    <Save className="w-4 h-4 mr-1" />
-                  )}
-                  Salvar
-                </Button>
-              </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={handleOpenJobLink} className="w-full">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Ver Vaga
+              </Button>
+
+              <Button
+                variant="ghost"
+                onClick={handleToggleSave}
+                disabled={isLoading}
+                className={`w-full ${status === 'saved' ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-100'}`}
+              >
+                <Bookmark className={`w-4 h-4 mr-2 ${status === 'saved' ? 'fill-blue-600' : ''}`} />
+                {status === 'saved' ? 'Salvo' : status === 'applied' ? 'Pipeline' : 'Salvar'}
+              </Button>
             </div>
-          </div>
-        ) : (
-          <div className="text-sm text-gray-600 max-h-32 overflow-y-auto">
-            {job.description?.length > 0 ? (
-              <p className="whitespace-pre-line line-clamp-5">
-                {job.description.substring(0, 500)}
-                {job.description.length > 500 && '...'}
-              </p>
-            ) : (
-              <p className="text-gray-400 italic">
-                Nenhuma descrição disponível. Clique em "Editar" para colar a descrição da vaga.
-              </p>
+
+            {status !== 'applied' && (
+              <Button
+                variant="ghost"
+                onClick={handleMarkAsApplied}
+                disabled={isLoading}
+                className="w-full text-emerald-600 hover:bg-emerald-50"
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Já Apliquei
+              </Button>
             )}
           </div>
-        )}
+        </div>
       </div>
-
-      {/* SEÇÃO 3: Ações da Candidatura */}
-      <Card className="border shadow-sm overflow-hidden bg-white">
-
-        {/* Header do Card */}
-        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/30">
-          <div className="flex items-center gap-2">
-            <Bookmark className="w-5 h-5 text-blue-600" />
-            <h2 className="font-semibold text-gray-800">Ações</h2>
-          </div>
-
-          {/* BOTÃO DE SALVAR / DESALVAR (TOGGLE) */}
-          <Button
-            onClick={handleToggleSave}
-            disabled={isLoading}
-            variant="ghost"
-            size="sm"
-            className={`
-              transition-all duration-200 gap-2 border
-              ${status === 'saved'
-                ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 hover:border-blue-300'
-                : status === 'applied'
-                  ? 'bg-green-50 text-green-700 border-green-200 hover:bg-red-50 hover:text-red-700 hover:border-red-200'
-                  : 'text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
-            `}
-          >
-            {status === 'saved' ? (
-              <>
-                <Bookmark className="w-4 h-4 fill-blue-600" />
-                Salvo
-              </>
-            ) : status === 'applied' ? (
-              <>
-                <Check className="w-4 h-4" />
-                {/* Texto muda no hover via CSS se quisesse, mas aqui vamos deixar fixo por enquanto, user entende pelo icone X ou tooltip futuramente */}
-                Aplicado
-              </>
-            ) : (
-              <>
-                <Bookmark className="w-4 h-4" />
-                Salvar em Pipeline
-              </>
-            )}
-          </Button>
-        </div>
-
-        {/* Corpo com Ações */}
-        <div className="p-6 space-y-4">
-
-          {status === 'applied' ? (
-            <div className="w-full p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-center gap-2 text-green-700 font-medium">
-              <Check className="w-5 h-5" />
-              <span>Candidatura registrada no Pipeline!</span>
-            </div>
-          ) : (
-            <>
-              {/* Instruções */}
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-100">
-                <p className="text-sm text-gray-600 mb-2">
-                  <strong>Como se candidatar:</strong>
-                </p>
-                <ol className="text-sm text-gray-500 space-y-1 list-decimal list-inside">
-                  <li>Clique em "Abrir Vaga" para acessar a página original</li>
-                  <li>Realize sua candidatura diretamente na plataforma</li>
-                  <li>Volte e clique em "Marcar como Aplicado" para registrar</li>
-                </ol>
-              </div>
-
-              {/* Botões de Ação */}
-              <div className="flex gap-3">
-                {/* Botão para abrir vaga original */}
-                <Button
-                  onClick={handleOpenJobLink}
-                  variant="outline"
-                  className="flex-1 text-gray-600 border-gray-300 hover:bg-gray-50"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Abrir Vaga
-                </Button>
-
-                {/* Botão Primário (Marcar como Aplicado) */}
-                <Button
-                  onClick={handleMarkAsApplied}
-                  disabled={isLoading}
-                  className="flex-[2] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md transition-all hover:scale-[1.01]"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Processando...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4 mr-2" />
-                      Marcar como Aplicado
-                    </>
-                  )}
-                </Button>
-              </div>
-
-              <p className="text-center text-[10px] text-gray-400">
-                Ao marcar como aplicado, a vaga será movida para a coluna "Enviado" no seu pipeline.
-              </p>
-            </>
-          )}
-        </div>
-      </Card>
     </div>
   );
 }

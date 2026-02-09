@@ -2,7 +2,7 @@
 // import api from '@/lib/api'; 
 
 // 🟢 Para isto (note o arquivo 'axios'):
-import api from '@/lib/axios'; 
+import api from '@/lib/axios';
 
 export interface JobDetails {
   id: string;
@@ -12,6 +12,7 @@ export interface JobDetails {
   remote: boolean;
   location: string | null;
   postedAt: string;
+  descriptionEditedAt?: string | null;
   company: {
     name: string;
     website: string | null;

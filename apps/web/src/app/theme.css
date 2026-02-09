@@ -8,18 +8,19 @@
   /* Background e Foreground */
   --background: #ffffff;
   --foreground: #0a0a0a;
-  
+
   /* Cores da marca */
-  --primary: #2563eb;      /* Azul profissional */
+  --primary: #2563eb;
+  /* Azul profissional */
   --primary-dark: #1e40af;
   --secondary: #64748b;
-  
+
   /* Estados */
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
   --info: #3b82f6;
-  
+
   /* Cinzas */
   --gray-50: #f9fafb;
   --gray-100: #f3f4f6;
@@ -27,7 +28,7 @@
   --gray-300: #d1d5db;
   --gray-700: #374151;
   --gray-900: #111827;
-  
+
   /* Sombras */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
@@ -98,6 +99,7 @@ body {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -105,8 +107,13 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .animate-slide-in {
@@ -136,4 +143,37 @@ body {
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 1.5rem;
+}
+
+/* ============================================
+   ATS SCANNER ANIMATIONS
+   ============================================ */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(147, 51, 234, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(147, 51, 234, 0.4);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
 }
