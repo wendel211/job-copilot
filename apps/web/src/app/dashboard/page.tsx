@@ -162,7 +162,7 @@ export default function DashboardPage() {
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent inline-block">Visão Geral</h1>
+            <h1 className="text-3xl font-bold text-gray-900 inline-block">Visão Geral</h1>
             <p className="text-gray-500 text-sm mt-1">Acompanhe o progresso da sua busca</p>
           </div>
           <div className="flex items-center gap-3">

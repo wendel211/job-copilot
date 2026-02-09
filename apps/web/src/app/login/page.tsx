@@ -89,11 +89,8 @@ export default function LoginPage() {
         {/* Logo & Header */}
         <div>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-              <Zap className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
-              JobCopilot
+            <span className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
+              Ajusta.ai
             </span>
           </div>
 
@@ -180,10 +177,7 @@ export default function LoginPage() {
       {/* Mobile Logo - Only visible on mobile */}
       <div className="lg:hidden absolute top-6 left-6 z-10">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg">
-            <Zap className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-gray-900">JobCopilot</span>
+          <span className="text-xl font-bold text-gray-900">Ajusta.ai</span>
         </div>
       </div>
     </div>

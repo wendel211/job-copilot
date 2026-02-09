@@ -307,7 +307,7 @@ export default function JobsPage() {
               {totalItems} oportunidades encontradas em nossa base.
             </p>
           </div>
-          <Button onClick={() => setShowImportModal(true)} className="shadow-sm">
+          <Button onClick={() => setShowImportModal(true)} className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl px-6 py-3 h-auto font-semibold shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5">
             <Plus className="w-4 h-4 mr-2" />
             Importar Vaga Manual
           </Button>

@@ -103,21 +103,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         className={`
           fixed top-0 left-0 z-50 h-screen
           ${isExpanded ? 'w-64' : 'w-20'}
-          bg-white border-r border-emerald-100
+          bg-white border-r border-gray-200
           transition-all duration-300 ease-in-out
           lg:translate-x-0
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          flex flex-col shadow-xl shadow-emerald-100/50
+          flex flex-col shadow-xl shadow-gray-200/50
         `}
       >
         {/* Logo */}
         <div className={`h-16 flex items-center ${isExpanded ? 'px-6' : 'px-0 justify-center'} mb-6`}>
-          <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Zap className="w-5 h-5 text-white" />
-            </div>
+          <Link href="/dashboard" className={`flex items-center gap-3 transition-all duration-300 ${isExpanded ? 'pl-4' : 'justify-center'}`}>
             {isExpanded && (
-              <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">JobCopilot</span>
+              <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent drop-shadow-sm">
+                Ajusta.ai
+              </span>
             )}
           </Link>
 
@@ -132,7 +131,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <div className="px-4 mb-2">
-          {isExpanded && <p className="text-xs font-semibold text-emerald-600/60 mb-4 px-2 tracking-wide uppercase">Menu Principal</p>}
+          {isExpanded && <p className="text-xs font-semibold text-gray-500 mb-4 px-2 tracking-wide uppercase">Menu Principal</p>}
         </div>
 
         <nav className={`flex-1 px-4 space-y-1`}>
@@ -149,13 +148,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   group relative flex items-center ${isExpanded ? 'gap-3 px-4' : 'justify-center px-0'} py-3.5 rounded-2xl
                   transition-all duration-200
                   ${isActive
-                    ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100'
-                    : 'text-gray-500 hover:bg-emerald-50 hover:text-emerald-700'
+                    ? 'bg-gray-100 text-gray-900 font-semibold'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }
                 `}
                 title={!isExpanded ? item.label : undefined}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'}`} />
+                <Icon className={`w-5 h-5 ${isActive ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-900'}`} />
 
                 {isExpanded && (
                   <span className="font-medium text-sm">{item.label}</span>
@@ -173,11 +172,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Divider */}
           <div className="py-4">
-            {isExpanded && <div className="h-px bg-gradient-to-r from-transparent via-emerald-100 to-transparent" />}
+            {isExpanded && <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />}
           </div>
 
           <div className="mb-2">
-            {isExpanded && <p className="text-xs font-semibold text-emerald-600/60 mb-4 px-2 tracking-wide uppercase">Conta</p>}
+            {isExpanded && <p className="text-xs font-semibold text-gray-500 mb-4 px-2 tracking-wide uppercase">Conta</p>}
           </div>
 
           {/* Bottom Items */}
@@ -194,13 +193,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   group relative flex items-center ${isExpanded ? 'gap-3 px-4' : 'justify-center px-0'} py-3.5 rounded-2xl
                   transition-all duration-200
                   ${isActive
-                    ? 'bg-emerald-50 text-emerald-700 shadow-sm border border-emerald-100'
-                    : 'text-gray-500 hover:bg-emerald-50 hover:text-emerald-700'
+                    ? 'bg-gray-100 text-gray-900 font-semibold'
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                   }
                 `}
                 title={!isExpanded ? item.label : undefined}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-emerald-500'}`} />
+                <Icon className={`w-5 h-5 ${isActive ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-900'}`} />
 
                 {isExpanded && (
                   <span className="font-medium text-sm">{item.label}</span>
@@ -222,7 +221,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             onClick={() => setIsExpanded(!isExpanded)}
             className={`
               w-full flex items-center ${isExpanded ? 'gap-3 px-4' : 'justify-center'} py-3 rounded-2xl
-              text-gray-400 hover:bg-emerald-50 hover:text-emerald-600 transition-colors
+              text-gray-400 hover:bg-gray-50 hover:text-gray-900 transition-colors
             `}
           >
             {isExpanded ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
@@ -233,19 +232,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {isExpanded && (
           <div className="px-6 pb-6 space-y-3">
             <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl p-4 border border-emerald-100">
-              <h4 className="font-bold text-gray-900 mb-1">Planos de Upgrade</h4>
-              <p className="text-xs text-emerald-600/80 mb-3">Conquiste funcionalidades premium</p>
-              <Link href="/pricing" className="block w-full py-2 bg-gradient-to-r from-emerald-600 to-green-600 text-white text-xs font-bold text-center rounded-xl hover:shadow-lg hover:shadow-emerald-500/20 transition-all">
-                Ver Planos
-              </Link>
+
             </div>
 
             <button
               onClick={logout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700 transition-colors"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors"
             >
               <LogOut className="w-5 h-5" />
-              <span className="font-medium text-sm">Sair da Conta</span>
+              <span className="font-medium text-sm">Sair</span>
             </button>
           </div>
         )}
