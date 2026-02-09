@@ -6,7 +6,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Briefcase,
   LogOut,
-  Menu,
   User,
   X,
   CopyCheck,
@@ -14,19 +13,14 @@ import {
   LayoutDashboard,
   FileText,
   Settings,
-  Wifi,
-  WifiOff,
-  RefreshCw,
   Search,
   Zap,
   ChevronLeft,
   ChevronRight,
-  Bell,
-  HelpCircle,
   CreditCard
 } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
-import { CreditsDisplay } from '@/components/credits/CreditsDisplay';
+import { Header } from './Header';
 
 // ============================================================================
 // NAVEGAÇÃO
@@ -84,8 +78,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const { user, logout } = useAppStore();
 
-  const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   useEffect(() => {
@@ -93,25 +85,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       router.push('/login');
     }
   }, [user, router]);
-
-  const checkApiStatus = async () => {
-    setApiStatus('checking');
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3003';
-      const res = await fetch(`${apiUrl}/health`);
-      setApiStatus(res.ok ? 'online' : 'offline');
-    } catch {
-      setApiStatus('offline');
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      checkApiStatus();
-      const interval = setInterval(checkApiStatus, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [user]);
 
   if (!user) return null;
 
@@ -310,55 +283,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           ${isExpanded ? 'lg:ml-64' : 'lg:ml-20'}
         `}
       >
-        {/* Header */}
-        <header className="h-16 bg-white/80 backdrop-blur-lg border-b border-gray-100 flex items-center px-4 sm:px-6 justify-between shrink-0 sticky top-0 z-30">
-          <div className="flex items-center gap-4">
-            {/* Mobile Menu */}
-            <button
-              onClick={toggleSidebar}
-              className="p-2 -ml-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl lg:hidden transition-colors"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Right Actions */}
-          <div className="flex items-center gap-2">
-            {/* Credits Display */}
-            <CreditsDisplay />
-
-            {/* Notifications */}
-            <button className="relative p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-emerald-500 rounded-full" />
-            </button>
-
-            {/* Help */}
-            <button className="p-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors hidden sm:flex">
-              <HelpCircle className="w-5 h-5" />
-            </button>
-
-            {/* API Status */}
-            <div
-              className={`
-                flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium transition-all
-                ${apiStatus === 'online'
-                  ? 'bg-emerald-50 text-emerald-600'
-                  : apiStatus === 'offline'
-                    ? 'bg-red-50 text-red-600'
-                    : 'bg-amber-50 text-amber-600'
-                }
-              `}
-            >
-              {apiStatus === 'checking' && <RefreshCw className="w-3 h-3 animate-spin" />}
-              {apiStatus === 'online' && <Wifi className="w-3 h-3" />}
-              {apiStatus === 'offline' && <WifiOff className="w-3 h-3" />}
-              <span className="hidden sm:inline">
-                {apiStatus === 'online' ? 'Online' : apiStatus === 'offline' ? 'Offline' : '...'}
-              </span>
-            </div>
-          </div>
-        </header>
+        <Header onMenuClick={toggleSidebar} />
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
