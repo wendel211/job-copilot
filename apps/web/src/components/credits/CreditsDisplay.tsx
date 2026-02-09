@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { CreditCard, X, Copy, Check, Loader2, Plus } from 'lucide-react';
 import { creditsApi, CreditPurchase } from '@/lib/api';
 import { toast } from 'sonner';
@@ -85,18 +86,18 @@ export function CreditsDisplay({ isExpanded = true }: CreditsDisplayProps) {
             </button>
 
             {/* Modal de Compra */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            {isModalOpen && createPortal(
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
                     {/* Overlay */}
                     <div
-                        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm"
                         onClick={closeModal}
                     />
 
                     {/* Modal Content */}
-                    <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+                    <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-auto my-auto flex flex-col max-h-[90vh]">
                         {/* Header */}
-                        <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                        <div className="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
                                     <CreditCard className="w-5 h-5 text-white" />
@@ -115,7 +116,7 @@ export function CreditsDisplay({ isExpanded = true }: CreditsDisplayProps) {
                         </div>
 
                         {/* Content */}
-                        <div className="p-5">
+                        <div className="p-5 overflow-y-auto">
                             {!purchase ? (
                                 /* Seleção de Quantidade */
                                 <div className="space-y-4">
@@ -178,11 +179,11 @@ export function CreditsDisplay({ isExpanded = true }: CreditsDisplayProps) {
                                                 <p className="text-sm text-gray-600 mb-3">
                                                     Escaneie o QR Code ou copie o código PIX
                                                 </p>
-                                                <div className="bg-white border-2 border-gray-200 rounded-xl p-4 inline-flex justify-center mb-4">
+                                                <div className="bg-white border-2 border-gray-200 rounded-xl p-4 flex justify-center mb-4">
                                                     <img
                                                         src={purchase.pixQrCode}
                                                         alt="QR Code PIX"
-                                                        className="w-56 h-56 object-contain"
+                                                        className="w-full max-w-[240px] h-auto object-contain"
                                                     />
                                                 </div>
                                             </>
@@ -253,7 +254,8 @@ export function CreditsDisplay({ isExpanded = true }: CreditsDisplayProps) {
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </>
     );
