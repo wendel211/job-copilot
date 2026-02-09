@@ -319,7 +319,7 @@ export default function JobsPage() {
         )}
 
         {/* Barra de Filtros */}
-        <Card className="border-none shadow-md bg-white sticky top-4 z-30">
+        <Card className="border-none shadow-md bg-white">
           <CardContent className="p-4">
             <div className="flex flex-col gap-4">
               <div className="flex gap-3">
