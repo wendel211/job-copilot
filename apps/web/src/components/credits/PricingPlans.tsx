@@ -97,9 +97,11 @@ const plans: Plan[] = [
 
 interface PricingPlansProps {
     onPurchaseSuccess?: () => void;
+    embedded?: boolean;
+    compact?: boolean;
 }
 
-export function PricingPlans({ onPurchaseSuccess }: PricingPlansProps) {
+export function PricingPlans({ onPurchaseSuccess, embedded = false, compact = false }: PricingPlansProps) {
     const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
     const [pixData, setPixData] = useState<{
         brCode: string;
@@ -190,84 +192,101 @@ export function PricingPlans({ onPurchaseSuccess }: PricingPlansProps) {
     }
 
     return (
-        <div className="py-8">
+        <div className={compact ? "py-2" : "py-8"}>
             {/* Header */}
-            <div className="text-center mb-10">
-                <h1 className="text-3xl font-bold text-gray-900 mb-3">
-                    Escolha seu Plano de Créditos
-                </h1>
-                <p className="text-gray-600 max-w-xl mx-auto">
-                    Cada crédito permite importar uma vaga. Quanto mais créditos, maior o desconto!
-                </p>
-            </div>
+            {!embedded && (
+                <div className="text-center mb-10">
+                    <h1 className="text-3xl font-bold text-gray-900 mb-3">
+                        Escolha seu Plano de Créditos
+                    </h1>
+                    <p className="text-gray-600 max-w-xl mx-auto">
+                        Cada crédito permite importar uma vaga. Quanto mais créditos, maior o desconto!
+                    </p>
+                </div>
+            )}
 
             {/* Plans Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto px-4">
+            <div className={`
+                ${compact
+                    ? 'grid grid-cols-2 lg:grid-cols-4 gap-3 px-1'
+                    : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto px-4'}
+            `}>
                 {plans.map((plan) => (
                     <div
                         key={plan.id}
                         className={`
                             relative bg-gradient-to-br ${plan.gradient} 
-                            rounded-2xl p-6 border-2 
+                            rounded-2xl border-2 
+                            ${compact ? 'p-3' : 'p-6'}
                             ${plan.popular ? 'border-blue-400 shadow-xl shadow-blue-100' : 'border-transparent'}
                             transition-all duration-300 hover:scale-105 hover:shadow-xl
                         `}
                     >
                         {/* Popular Badge */}
                         {plan.popular && (
-                            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                                <span className="bg-blue-600 text-white text-xs font-bold px-4 py-1 rounded-full">
+                            <div className={`absolute left-1/2 -translate-x-1/2 ${compact ? '-top-2' : '-top-3'}`}>
+                                <span className={`bg-blue-600 text-white font-bold rounded-full ${compact ? 'text-[10px] px-2 py-0.5' : 'text-xs px-4 py-1'}`}>
                                     MAIS POPULAR
                                 </span>
                             </div>
                         )}
 
                         {/* Icon */}
-                        <div className={`w-12 h-12 ${plan.iconBg} rounded-xl flex items-center justify-center text-white mb-4`}>
-                            {plan.icon}
+                        <div className={`
+                            ${plan.iconBg} rounded-xl flex items-center justify-center text-white mb-3
+                            ${compact ? 'w-8 h-8' : 'w-12 h-12 mb-4'}
+                        `}>
+                            {compact ? (
+                                <div className="scale-75">{plan.icon}</div>
+                            ) : (
+                                plan.icon
+                            )}
                         </div>
 
                         {/* Name & Description */}
-                        <h3 className="text-xl font-bold text-gray-900">{plan.name}</h3>
-                        <p className="text-gray-600 text-sm mb-4">{plan.description}</p>
+                        <h3 className={`font-bold text-gray-900 ${compact ? 'text-sm' : 'text-xl'}`}>{plan.name}</h3>
+                        {!compact && <p className="text-gray-600 text-sm mb-4">{plan.description}</p>}
 
                         {/* Price */}
-                        <div className="mb-4">
+                        <div className={compact ? "mb-2" : "mb-4"}>
                             <div className="flex items-baseline gap-1">
                                 <span className="text-sm text-gray-500">R$</span>
-                                <span className="text-4xl font-bold text-gray-900">
+                                <span className={`font-bold text-gray-900 ${compact ? 'text-2xl' : 'text-4xl'}`}>
                                     {plan.price === 0 ? '0' : plan.price.toFixed(2).replace('.', ',')}
                                 </span>
                             </div>
                             {plan.pricePerCredit && (
-                                <p className="text-sm text-gray-500 mt-1">
-                                    R${plan.pricePerCredit.toFixed(2).replace('.', ',')} por crédito
+                                <p className={`text-gray-500 mt-1 ${compact ? 'text-xs' : 'text-sm'}`}>
+                                    R${plan.pricePerCredit.toFixed(2).replace('.', ',')} / crédito
                                 </p>
                             )}
                             {plan.credits > 0 && (
-                                <p className="text-sm font-medium text-emerald-600 mt-1">
+                                <p className={`font-medium text-emerald-600 mt-1 ${compact ? 'text-xs' : 'text-sm'}`}>
                                     {plan.credits} crédito{plan.credits > 1 ? 's' : ''}
                                 </p>
                             )}
                         </div>
 
-                        {/* Features */}
-                        <ul className="space-y-2 mb-6">
-                            {plan.features.map((feature, idx) => (
-                                <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
-                                    <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                                    <span>{feature}</span>
-                                </li>
-                            ))}
-                        </ul>
+                        {/* Features - Hide in compact mode to save space, or show fewer */}
+                        {!compact && (
+                            <ul className="space-y-2 mb-6">
+                                {plan.features.map((feature, idx) => (
+                                    <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                                        <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                                        <span>{feature}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
 
                         {/* Button */}
                         <button
                             onClick={() => handlePurchase(plan)}
                             disabled={plan.id === 'free' || loadingPlan === plan.id}
                             className={`
-                                w-full py-3 rounded-xl font-semibold transition-all
+                                w-full rounded-xl font-semibold transition-all
                                 flex items-center justify-center gap-2
+                                ${compact ? 'py-1.5 text-xs' : 'py-3'}
                                 ${plan.id === 'free'
                                     ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                     : plan.popular
@@ -279,8 +298,8 @@ export function PricingPlans({ onPurchaseSuccess }: PricingPlansProps) {
                         >
                             {loadingPlan === plan.id ? (
                                 <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Gerando PIX...
+                                    <Loader2 className={`animate-spin ${compact ? 'w-3 h-3' : 'w-5 h-5'}`} />
+                                    {compact ? '...' : 'Gerando PIX...'}
                                 </>
                             ) : (
                                 plan.buttonText
@@ -291,11 +310,13 @@ export function PricingPlans({ onPurchaseSuccess }: PricingPlansProps) {
             </div>
 
             {/* Footer Note */}
-            <div className="text-center mt-8">
-                <p className="text-sm text-gray-500">
-                    Pagamento seguro via PIX • Créditos não expiram • Cancele quando quiser
-                </p>
-            </div>
+            {!embedded && (
+                <div className="text-center mt-8">
+                    <p className="text-sm text-gray-500">
+                        Pagamento seguro via PIX • Créditos não expiram • Cancele quando quiser
+                    </p>
+                </div>
+            )}
         </div>
     );
 }

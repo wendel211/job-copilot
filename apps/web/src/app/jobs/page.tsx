@@ -25,11 +25,13 @@ import {
 import { jobsApi, importApi, type Job } from '@/lib/api'; // Removido pipelineApi
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
+import { CreditsModal } from '@/components/credits/CreditsModal';
+
 
 // ============================================================================
 // 1. COMPONENT: JOB CARD (Sem botão de salvar)
 // ============================================================================
-interface JobCardProps extends Job {}
+interface JobCardProps extends Job { }
 
 const JobCard = ({ ...job }: JobCardProps) => {
   // Mapa de cores
@@ -91,22 +93,22 @@ const JobCard = ({ ...job }: JobCardProps) => {
 
         {/* Descrição Curta */}
         <p className="text-xs text-gray-500 line-clamp-3 mb-4 flex-1">
-            {job.description.replace(/<[^>]*>?/gm, '')}
+          {job.description.replace(/<[^>]*>?/gm, '')}
         </p>
 
         {/* Footer: Data e Link Externo */}
         <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400 mt-auto relative z-10">
-            <span>{new Date(job.createdAt).toLocaleDateString()}</span>
-            
-            <a
-                href={job.applyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 hover:text-blue-600 font-medium transition-colors"
-                onClick={(e) => e.stopPropagation()} // Impede que o clique abra o detalhe interno
-            >
-                Ver original <ExternalLink className="w-3 h-3" />
-            </a>
+          <span>{new Date(job.createdAt).toLocaleDateString()}</span>
+
+          <a
+            href={job.applyUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 hover:text-blue-600 font-medium transition-colors"
+            onClick={(e) => e.stopPropagation()} // Impede que o clique abra o detalhe interno
+          >
+            Ver original <ExternalLink className="w-3 h-3" />
+          </a>
         </div>
       </CardContent>
     </Card>
@@ -125,18 +127,18 @@ const RecommendedSection = ({ jobs }: { jobs: Job[] }) => {
         <Sparkles className="w-5 h-5 text-amber-500 fill-amber-500" />
         <h2 className="text-xl font-bold text-gray-900">Sugestões para seu perfil</h2>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {jobs.slice(0, 3).map(job => (
           <div key={job.id} className="relative group">
             {/* Efeito de Glow */}
             <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-200 to-orange-100 rounded-xl opacity-50 group-hover:opacity-100 transition duration-500 blur-sm"></div>
-            
+
             <div className="relative bg-white rounded-xl p-0 h-full border border-amber-100 shadow-sm hover:shadow-md transition-shadow">
-               <JobCard {...job} />
-               <div className="absolute top-0 right-0 p-2 shadow-sm z-10">
-                 <Badge variant="warning">Top Match</Badge>
-               </div>
+              <JobCard {...job} />
+              <div className="absolute top-0 right-0 p-2 shadow-sm z-10">
+                <Badge variant="warning">Top Match</Badge>
+              </div>
             </div>
           </div>
         ))}
@@ -156,10 +158,10 @@ const ImportModal = ({ isOpen, onClose, onImport, isLoading }: any) => {
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in backdrop-blur-sm">
       <Card className="w-full max-w-md shadow-2xl relative z-50">
         <CardContent className="p-6">
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-gray-900">Importar Vaga</h2>
-                <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4"/></Button>
-            </div>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold text-gray-900">Importar Vaga</h2>
+            <Button variant="ghost" size="sm" onClick={onClose}><X className="w-4 h-4" /></Button>
+          </div>
           <p className="text-sm text-gray-500 mb-4">
             Cole o link da vaga (LinkedIn, Gupy, Greenhouse) para adicionar ao sistema manualmente.
           </p>
@@ -187,17 +189,21 @@ const ImportModal = ({ isOpen, onClose, onImport, isLoading }: any) => {
   );
 };
 
+
+
+// ... (existing imports)
+
 // ============================================================================
 // 4. MAIN PAGE
 // ============================================================================
 export default function JobsPage() {
   const { userId } = useAppStore();
-  
+
   // -- Data State --
   const [jobs, setJobs] = useState<Job[]>([]);
   const [recommended, setRecommended] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // -- Pagination State --
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -214,6 +220,7 @@ export default function JobsPage() {
 
   // -- Actions State --
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
 
   // 1. Fetch Recommendations (Once on mount)
@@ -225,16 +232,16 @@ export default function JobsPage() {
   const fetchJobs = useCallback(async () => {
     try {
       setIsLoading(true);
-      
-      const response = await jobsApi.search({ 
-        page, 
+
+      const response = await jobsApi.search({
+        page,
         q: searchQuery,
         remote: filters.remote ? true : undefined,
         atsType: filters.atsType || undefined,
         source: filters.source || undefined,
         take: 24
       });
-      
+
       setJobs(response.data);
       if (response.meta) {
         setTotalPages(response.meta.lastPage);
@@ -267,8 +274,15 @@ export default function JobsPage() {
       setJobs((prev) => [job, ...prev]);
       setShowImportModal(false);
       toast.success('Vaga importada com sucesso!');
-    } catch (error) {
-      toast.error('Falha ao importar. Link inválido ou não suportado.');
+    } catch (error: any) {
+      // Tratar erro de créditos insuficientes
+      if (error.response?.status === 400 && error.response?.data?.message?.includes('créditos')) {
+        toast.error('Você não tem créditos suficientes para importar esta vaga.');
+        setShowImportModal(false); // Fecha o modal de importação
+        setShowCreditsModal(true); // Abre o modal de compra
+      } else {
+        toast.error('Falha ao importar. Link inválido ou não suportado.');
+      }
     } finally {
       setIsImporting(false);
     }
@@ -284,7 +298,7 @@ export default function JobsPage() {
   return (
     <AppShell>
       <div className="space-y-8 animate-slide-in pb-20">
-        
+
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -301,7 +315,7 @@ export default function JobsPage() {
 
         {/* Recomendações */}
         {!hasActiveFilters && page === 1 && (
-            <RecommendedSection jobs={recommended} />
+          <RecommendedSection jobs={recommended} />
         )}
 
         {/* Barra de Filtros */}
@@ -311,7 +325,7 @@ export default function JobsPage() {
               <div className="flex gap-3">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input 
+                  <input
                     type="text"
                     placeholder="Buscar por cargo, tecnologia (ex: React) ou empresa..."
                     className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
@@ -319,7 +333,7 @@ export default function JobsPage() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
-                <Button 
+                <Button
                   variant={showFilters ? "secondary" : "outline"}
                   onClick={() => setShowFilters(!showFilters)}
                   className="min-w-[100px]"
@@ -332,32 +346,32 @@ export default function JobsPage() {
               {/* Área de Filtros Expansível */}
               {showFilters && (
                 <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-gray-100 animate-in slide-in-from-top-2">
-                  
+
                   {/* Filtro: Fonte */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Origem</label>
-                    <select 
-                        className="h-9 px-3 text-sm bg-white border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-                        value={filters.source}
-                        onChange={(e) => setFilters(prev => ({ ...prev, source: e.target.value }))}
+                    <select
+                      className="h-9 px-3 text-sm bg-white border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
+                      value={filters.source}
+                      onChange={(e) => setFilters(prev => ({ ...prev, source: e.target.value }))}
                     >
-                        <option value="">Todas as Fontes</option>
-                        <optgroup label="Agregadores">
-                            <option value="adzuna">Adzuna</option>
-                            <option value="remotive">Remotive</option>
-                            <option value="programathor">Programathor</option>
-                        </optgroup>
-                        <optgroup label="Manual / ATS">
-                            <option value="manual">Manual</option>
-                            <option value="linkedin">LinkedIn</option>
-                        </optgroup>
+                      <option value="">Todas as Fontes</option>
+                      <optgroup label="Agregadores">
+                        <option value="adzuna">Adzuna</option>
+                        <option value="remotive">Remotive</option>
+                        <option value="programathor">Programathor</option>
+                      </optgroup>
+                      <optgroup label="Manual / ATS">
+                        <option value="manual">Manual</option>
+                        <option value="linkedin">LinkedIn</option>
+                      </optgroup>
                     </select>
                   </div>
 
                   {/* Filtro: ATS */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Plataforma</label>
-                    <select 
+                    <select
                       className="h-9 px-3 text-sm bg-white border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
                       value={filters.atsType}
                       onChange={(e) => setFilters(prev => ({ ...prev, atsType: e.target.value }))}
@@ -375,11 +389,10 @@ export default function JobsPage() {
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Local</label>
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, remote: !prev.remote }))}
-                      className={`h-9 px-4 text-sm border rounded-md flex items-center gap-2 transition-colors ${
-                        filters.remote 
-                          ? 'bg-blue-50 border-blue-200 text-blue-700 font-medium' 
-                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
+                      className={`h-9 px-4 text-sm border rounded-md flex items-center gap-2 transition-colors ${filters.remote
+                        ? 'bg-blue-50 border-blue-200 text-blue-700 font-medium'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
                     >
                       <Globe className="w-4 h-4" />
                       Apenas Remoto
@@ -388,7 +401,7 @@ export default function JobsPage() {
 
                   {/* Botão Limpar */}
                   {hasActiveFilters && (
-                    <button 
+                    <button
                       onClick={clearFilters}
                       className="ml-auto text-xs text-red-500 hover:text-red-700 flex items-center gap-1 font-medium mt-auto mb-2"
                     >
@@ -414,57 +427,64 @@ export default function JobsPage() {
               title="Nenhuma vaga encontrada"
               description="Tente ajustar seus filtros ou importe uma nova vaga."
               action={
-                hasActiveFilters 
-                    ? <Button variant="outline" onClick={clearFilters}>Limpar Filtros</Button>
-                    : <Button onClick={() => setShowImportModal(true)}>Importar Agora</Button>
+                hasActiveFilters
+                  ? <Button variant="outline" onClick={clearFilters}>Limpar Filtros</Button>
+                  : <Button onClick={() => setShowImportModal(true)}>Importar Agora</Button>
               }
             />
           ) : (
             <>
-                {/* GRID COM MAIS ESPAÇO (5 colunas em telas grandes) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+              {/* GRID COM MAIS ESPAÇO (5 colunas em telas grandes) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
                 {jobs.map((job) => (
-                    <JobCard
-                        key={job.id}
-                        {...job}
-                    />
+                  <JobCard
+                    key={job.id}
+                    {...job}
+                  />
                 ))}
-                </div>
+              </div>
 
-                {/* Paginação */}
-                <div className="flex items-center justify-between mt-8 border-t pt-4 border-gray-100">
-                    <p className="text-sm text-gray-500">
-                        Página {page} de {totalPages}
-                    </p>
-                    <div className="flex gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                        >
-                            <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            disabled={page === totalPages}
-                        >
-                            Próxima <ChevronRight className="w-4 h-4 ml-1" />
-                        </Button>
-                    </div>
+              {/* Paginação */}
+              <div className="flex items-center justify-between mt-8 border-t pt-4 border-gray-100">
+                <p className="text-sm text-gray-500">
+                  Página {page} de {totalPages}
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    Próxima <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
                 </div>
+              </div>
             </>
           )}
         </div>
       </div>
 
-      <ImportModal 
-        isOpen={showImportModal} 
+      <ImportModal
+        isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
         onImport={handleImport}
         isLoading={isImporting}
+      />
+
+      <CreditsModal
+        isOpen={showCreditsModal}
+        onClose={() => setShowCreditsModal(false)}
+        title="Créditos Insuficientes"
+        description="Para importar novas vagas com nossa IA, você precisa adquirir créditos."
       />
     </AppShell>
   );
