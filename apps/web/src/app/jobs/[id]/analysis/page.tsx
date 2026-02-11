@@ -81,60 +81,60 @@ export default function AtsScannerPage() {
     // ==================== LOADING SCREEN ====================
     if (isLoading) {
         const CurrentIcon = loadingSteps[loadingStep]?.icon || Loader2;
-        const currentColor = loadingSteps[loadingStep]?.color || 'text-purple-400';
+        // Text Colors adapted for white background - darker shades
+        const currentColor = loadingSteps[loadingStep]?.color?.replace('-400', '-600') || 'text-emerald-600';
         const progress = ((loadingStep + 1) / loadingSteps.length) * 100;
 
         return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white relative overflow-hidden">
-                {/* Background Effects */}
+            <div className="flex flex-col items-center justify-center min-h-screen bg-white text-gray-900 relative overflow-hidden">
+                {/* Background Effects - Subtle and Clean */}
                 <div className="absolute inset-0">
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-950/60 via-gray-950 to-gray-950"></div>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/5 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent animate-shimmer"></div>
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-50/50 via-white to-white"></div>
+                    <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-100 to-transparent"></div>
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center max-w-lg mx-auto px-6">
                     {/* Animated Icon Container */}
                     <div className="relative mb-8">
-                        <div className="w-24 h-24 bg-gray-900/80 backdrop-blur-xl rounded-3xl flex items-center justify-center shadow-2xl shadow-purple-500/20 border border-purple-500/10">
-                            <CurrentIcon className={`w-12 h-12 ${currentColor} transition-all duration-500`} />
+                        <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center shadow-xl shadow-emerald-100 border border-emerald-50">
+                            <CurrentIcon className={`w-10 h-10 ${currentColor} transition-all duration-500`} />
                         </div>
-                        {/* Orbiting dots */}
-                        <div className="absolute -top-2 -right-2 w-4 h-4 bg-purple-500 rounded-full animate-ping opacity-75"></div>
-                        <div className="absolute -bottom-1 -left-1 w-3 h-3 bg-blue-500 rounded-full animate-ping opacity-50" style={{ animationDelay: '0.5s' }}></div>
+                        {/* Orbiting dots - Adapted colors */}
+                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full animate-ping opacity-75"></div>
+                        <div className="absolute -bottom-1 -left-1 w-2.5 h-2.5 bg-teal-400 rounded-full animate-ping opacity-50" style={{ animationDelay: '0.5s' }}></div>
                     </div>
 
-                    <h2 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white via-purple-200 to-white mb-3 text-center">
-                        ATS Scanner Pro
+                    <h2 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent drop-shadow-sm mb-3 text-center">
+                        Ajusta.ai
                     </h2>
-                    <p className="text-sm text-gray-500 mb-8 text-center">
-                        Baseado nos critérios de +50 ATS do mercado
+                    <p className="text-sm text-gray-500 mb-10 text-center font-medium">
+                        Otimizando seu perfil com inteligência artificial...
                     </p>
 
                     {/* Current Step */}
-                    <div className="flex flex-col items-center gap-4 w-full">
-                        <p className="text-base text-purple-200 font-medium text-center transition-all duration-300">
+                    <div className="flex flex-col items-center gap-4 w-full px-8">
+                        <p className="text-sm text-gray-600 font-medium text-center transition-all duration-300 h-5">
                             {loadingSteps[loadingStep]?.text || 'Processando...'}
                         </p>
 
                         {/* Progress Bar */}
-                        <div className="w-full max-w-xs h-2 bg-gray-800 rounded-full overflow-hidden">
+                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-gradient-to-r from-purple-600 via-blue-500 to-emerald-500 rounded-full transition-all duration-700 ease-out"
+                                className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-green-400 rounded-full transition-all duration-700 ease-out"
                                 style={{ width: `${progress}%` }}
                             ></div>
                         </div>
 
                         {/* Step Dots */}
-                        <div className="flex gap-2">
+                        <div className="flex gap-1.5 mt-2">
                             {loadingSteps.map((_, idx) => (
                                 <div
                                     key={idx}
-                                    className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === loadingStep
-                                        ? 'bg-purple-400 scale-150 shadow-lg shadow-purple-400/50'
+                                    className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === loadingStep
+                                        ? 'bg-emerald-500 scale-125'
                                         : idx < loadingStep
-                                            ? 'bg-purple-600/60'
-                                            : 'bg-gray-800'
+                                            ? 'bg-emerald-200'
+                                            : 'bg-gray-200'
                                         }`}
                                 />
                             ))}
