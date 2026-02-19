@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/Button';
+
+
 import {
   Sparkles,
   Bookmark,
@@ -138,75 +139,113 @@ export function JobCopilot({ job, onJobUpdate }: JobCopilotProps) {
   };
 
   return (
-    <div className="space-y-5 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
 
-      {/* HEADER + AÇÕES */}
-      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm transition-all hover:shadow-md">
-        <div className="flex flex-col gap-4 mb-2">
+      {/* CARD PRINCIPAL */}
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+
+        {/* Header do Card */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-sm">
+            <Sparkles className="w-4 h-4 text-white" />
+          </div>
           <div>
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-600" />
-              Job Copilot
-            </h2>
-            <p className="text-sm text-gray-500">Workspace inteligente para sua candidatura.</p>
+            <h2 className="text-sm font-semibold text-gray-900 leading-tight">Job Copilot</h2>
+            <p className="text-xs text-gray-400">Workspace inteligente para candidatura</p>
           </div>
+        </div>
 
-          <div className="flex flex-col gap-3">
-            {/* Status da Descrição */}
-            {!hasDescription ? (
-              <div className="p-3 bg-amber-50 text-amber-800 text-xs rounded-lg border border-amber-100 flex items-start gap-2">
-                <FileText className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>Adicione a descrição da vaga (ao lado) para liberar o ATS Scanner.</span>
-              </div>
-            ) : (
-              <div className="p-3 bg-purple-50 text-purple-800 text-xs rounded-lg border border-purple-100 flex items-center gap-2">
-                <Check className="w-4 h-4 shrink-0" />
-                <span>Descrição adicionada. ATS Scanner liberado!</span>
-              </div>
-            )}
+        {/* Corpo */}
+        <div className="p-5 flex flex-col gap-3">
 
-            {/* Botão ATS Scanner - Habilitado apenas se tem descrição */}
-            <Button
-              onClick={handleOpenAnalysis}
-              disabled={!hasDescription}
-              className={`w-full text-white shadow-lg transition-all hover:scale-[1.02] ${hasDescription
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-200'
-                  : 'bg-gray-300 cursor-not-allowed shadow-none'
-                }`}
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              Rodar ATS Scanner
-            </Button>
-
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={handleOpenJobLink} className="w-full">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Ver Vaga
-              </Button>
-
-              <Button
-                variant="ghost"
-                onClick={handleToggleSave}
-                disabled={isLoading}
-                className={`w-full ${status === 'saved' ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:bg-gray-100'}`}
-              >
-                <Bookmark className={`w-4 h-4 mr-2 ${status === 'saved' ? 'fill-blue-600' : ''}`} />
-                {status === 'saved' ? 'Salvo' : status === 'applied' ? 'Pipeline' : 'Salvar'}
-              </Button>
+          {/* Status da Descrição */}
+          {!hasDescription ? (
+            <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-100 rounded-xl">
+              <FileText className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-700 leading-snug">
+                Adicione a descrição da vaga para liberar o <span className="font-semibold">ATS Scanner</span>.
+              </p>
             </div>
+          ) : (
+            <div className="flex items-center gap-2.5 p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+              <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                <Check className="w-3 h-3 text-white" />
+              </div>
+              <p className="text-xs text-emerald-700 font-medium">
+                Descrição adicionada. ATS Scanner liberado!
+              </p>
+            </div>
+          )}
 
-            {status !== 'applied' && (
-              <Button
-                variant="ghost"
-                onClick={handleMarkAsApplied}
-                disabled={isLoading}
-                className="w-full text-emerald-600 hover:bg-emerald-50"
-              >
-                <Check className="w-4 h-4 mr-2" />
-                Já Apliquei
-              </Button>
-            )}
+          {/* Botão ATS Scanner */}
+          <button
+            onClick={handleOpenAnalysis}
+            disabled={!hasDescription}
+            className={`
+              w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl
+              text-sm font-semibold transition-all duration-200
+              ${hasDescription
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-200/50 hover:from-emerald-700 hover:to-teal-700 hover:shadow-lg hover:shadow-emerald-200/60 hover:scale-[1.02] active:scale-[0.99]'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              }
+            `}
+          >
+            <Sparkles className="w-4 h-4" />
+            Analisar com ATS Scanner
+          </button>
+
+          {/* Divisor */}
+          <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />
+
+          {/* Ações secundárias */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Ver Vaga */}
+            <button
+              onClick={handleOpenJobLink}
+              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border border-gray-200 text-gray-600 text-xs font-medium hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-all"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              Ver Vaga
+            </button>
+
+            {/* Salvar / Pipeline */}
+            <button
+              onClick={handleToggleSave}
+              disabled={isLoading}
+              className={`
+                flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-medium transition-all
+                ${status === 'saved'
+                  ? 'bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100'
+                  : status === 'applied'
+                    ? 'bg-violet-50 text-violet-600 border border-violet-100 hover:bg-violet-100'
+                    : 'border border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900'
+                }
+              `}
+            >
+              <Bookmark className={`w-3.5 h-3.5 ${status === 'saved' ? 'fill-blue-600' : status === 'applied' ? 'fill-violet-600' : ''}`} />
+              {status === 'saved' ? 'Salvo' : status === 'applied' ? 'Pipeline' : 'Salvar'}
+            </button>
           </div>
+
+          {/* Já Apliquei */}
+          {status !== 'applied' && (
+            <button
+              onClick={handleMarkAsApplied}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 text-xs font-semibold hover:bg-emerald-100 hover:border-emerald-300 transition-all"
+            >
+              <Check className="w-3.5 h-3.5" />
+              Já Apliquei
+            </button>
+          )}
+
+          {/* Badge de status quando já aplicado */}
+          {status === 'applied' && (
+            <div className="flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-emerald-50 border border-emerald-100">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-semibold text-emerald-700">Candidatura registrada</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
