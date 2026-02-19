@@ -174,12 +174,7 @@ export const Header = ({ onMenuClick }: HeaderProps) => {
                 {/* Credits Display */}
                 <CreditsDisplay />
 
-                {/* User Profile - Header Version */}
-                <div className="hidden sm:flex items-center gap-3 pl-2">
-                    <div className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center text-gray-500 font-bold">
-                        {user?.fullName?.charAt(0) || 'U'}
-                    </div>
-                </div>
+
             </div>
         </header>
     );
