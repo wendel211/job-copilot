@@ -112,14 +112,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <div className={`h-16 flex items-center ${isExpanded ? 'px-6' : 'px-0 justify-center'} mb-6`}>
-          <Link href="/dashboard" className={`flex items-center gap-3 transition-all duration-300 ${isExpanded ? 'pl-4' : 'justify-center'}`}>
-            {isExpanded && (
-              <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent drop-shadow-sm">
-                Ajusta.ai
-              </span>
-            )}
-          </Link>
-
           {/* Close button - Mobile */}
           <button
             onClick={toggleSidebar}
