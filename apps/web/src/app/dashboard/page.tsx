@@ -1,325 +1,458 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useAppStore } from '@/lib/store';
 import { statsApi } from '@/lib/api';
 import AppShell from '@/components/layout/AppShell';
-import { Button } from '@/components/ui/Button';
 import {
-  Briefcase,
-  Send,
-  Calendar,
-  TrendingUp,
-  Plus,
-  ArrowRight,
-  Clock,
-  Loader2,
-  MoreHorizontal,
-  Search,
-  CheckCircle2,
-  FileText
+  Send, Calendar, FileText, Clock,
+  Loader2, Search, TrendingUp, CheckCircle2,
+  ArrowRight, Sparkles, Briefcase, Plus, ChevronRight
 } from 'lucide-react';
 
-// ============================================================================
-// TYPES & HELPERS
-// ============================================================================
-
+// ─────────────────────────────────────────────────
+// TIPOS
+// ─────────────────────────────────────────────────
 interface DashboardData {
   overview: {
-    total: number;
-    applied: number;
-    interviews: number;
-    offers: number;
-    rejected: number;
-    drafts: number;
+    total: number; applied: number; interviews: number;
+    offers: number; rejected: number; drafts: number;
   };
   recentActivity: Array<{
-    id: string;
-    status: string;
-    updatedAt: string;
-    job: {
-      title: string;
-      company: { name: string };
-    };
+    id: string; status: string; updatedAt: string;
+    job: { title: string; company: { name: string } };
   }>;
 }
 
-const getStatusConfig = (status: string) => {
-  switch (status) {
-    case 'discovered':
-    case 'prepared':
-      return { label: 'Salvo', color: 'text-emerald-600', bg: 'bg-emerald-100' };
-    case 'applied':
-    case 'sent':
-      return { label: 'Aplicado', color: 'text-blue-600', bg: 'bg-blue-100' };
-    case 'interview':
-    case 'screening':
-      return { label: 'Entrevista', color: 'text-purple-600', bg: 'bg-purple-100' };
-    case 'offer':
-      return { label: 'Proposta', color: 'text-amber-600', bg: 'bg-amber-100' };
-    case 'rejected':
-      return { label: 'Rejeitado', color: 'text-red-400', bg: 'bg-red-50' };
-    default:
-      return { label: 'Atualizado', color: 'text-gray-600', bg: 'bg-gray-100' };
-  }
+// ─────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────
+const STATUS: Record<string, { label: string; dot: string; bg: string; text: string }> = {
+  discovered: { label: 'Salvo', dot: '#10b981', bg: '#f0fdf4', text: '#065f46' },
+  prepared: { label: 'Salvo', dot: '#10b981', bg: '#f0fdf4', text: '#065f46' },
+  applied: { label: 'Aplicado', dot: '#3b82f6', bg: '#eff6ff', text: '#1e40af' },
+  sent: { label: 'Aplicado', dot: '#3b82f6', bg: '#eff6ff', text: '#1e40af' },
+  interview: { label: 'Entrevista', dot: '#8b5cf6', bg: '#f5f3ff', text: '#4c1d95' },
+  screening: { label: 'Entrevista', dot: '#8b5cf6', bg: '#f5f3ff', text: '#4c1d95' },
+  offer: { label: 'Proposta', dot: '#f59e0b', bg: '#fffbeb', text: '#78350f' },
+  rejected: { label: 'Rejeitado', dot: '#ef4444', bg: '#fef2f2', text: '#7f1d1d' },
 };
+const getStatus = (s: string) =>
+  STATUS[s] ?? { label: 'Atualizado', dot: '#94a3b8', bg: '#f8fafc', text: '#334155' };
 
-// ============================================================================
-// COMPONENTES VISUAIS
-// ============================================================================
-
-const StatsCard = ({ title, subtitle, count, total, icon, colorClass, bgClass }: any) => {
-  return (
-    <div className="relative p-6 rounded-3xl bg-white border border-emerald-50 hover:border-emerald-200 shadow-sm hover:shadow-lg hover:shadow-emerald-500/5 transition-all group">
-      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-4 ${bgClass} group-hover:scale-110 transition-transform`}>
-        {React.cloneElement(icon, { className: `w-5 h-5 ${colorClass}` })}
-      </div>
-
-      <h3 className="text-gray-500 text-sm font-medium mb-1">{title}</h3>
-      <div className="flex items-baseline gap-1 mb-2">
-        <span className="text-2xl font-bold text-gray-900">{count}</span>
-        <span className="text-sm text-gray-400">/ {total} Total</span>
-      </div>
-
-      <p className="text-xs font-medium text-emerald-600/80">{subtitle}</p>
-    </div>
-  );
+const AVATAR_PALETTE = [
+  { bg: '#ecfdf5', fg: '#059669' }, { bg: '#eff6ff', fg: '#2563eb' },
+  { bg: '#f5f3ff', fg: '#7c3aed' }, { bg: '#fff7ed', fg: '#d97706' },
+  { bg: '#fdf2f8', fg: '#9d174d' }, { bg: '#f0f9ff', fg: '#0369a1' },
+];
+const avatarOf = (name = '') => {
+  let h = 0; for (const c of name) h += c.charCodeAt(0);
+  return AVATAR_PALETTE[h % AVATAR_PALETTE.length];
 };
+const initials = (name = '') => name.trim().slice(0, 2).toUpperCase() || '--';
 
-const ActivityCard = ({ activity }: { activity: DashboardData['recentActivity'][0] }) => {
-  const config = getStatusConfig(activity.status);
+// ─────────────────────────────────────────────────
+// HOOK: contador animado
+// ─────────────────────────────────────────────────
+function useCount(target: number, duration = 900) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!target) { setN(0); return; }
+    const t0 = Date.now();
+    let raf: number;
+    const tick = () => {
+      const p = Math.min((Date.now() - t0) / duration, 1);
+      const eased = 1 - (1 - p) ** 3;
+      setN(Math.round(eased * target));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, duration]);
+  return n;
+}
+
+// ─────────────────────────────────────────────────
+// CARD MÉTRICA
+// ─────────────────────────────────────────────────
+function MetricCard({
+  label, value, total, icon: Icon, color, lightBg, delay = 0,
+}: {
+  label: string; value: number; total: number;
+  icon: React.ElementType; color: string; lightBg: string; delay?: number;
+}) {
+  const [show, setShow] = useState(false);
+  const count = useCount(show ? value : 0);
+  useEffect(() => { const t = setTimeout(() => setShow(true), delay); return () => clearTimeout(t); }, [delay]);
+
+  const pct = total ? Math.round((value / total) * 100) : 0;
 
   return (
-    <div className="bg-white p-4 rounded-3xl shadow-sm border border-emerald-50 hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-500/5 transition-all flex flex-col gap-3 group relative cursor-pointer">
-      <div className="absolute top-4 right-4 text-gray-300 hover:text-emerald-600 transition-colors">
-        <MoreHorizontal className="w-5 h-5" />
+    <div
+      className="metric-card"
+      style={{
+        background: '#fff',
+        border: '1px solid #e2e8f0',
+        borderRadius: 16,
+        padding: '22px 24px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 14,
+        opacity: show ? 1 : 0,
+        transform: show ? 'none' : 'translateY(12px)',
+        transition: 'opacity 0.45s ease, transform 0.45s ease, box-shadow 0.2s',
+      }}
+    >
+      {/* topo: ícone + percentual */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 12,
+          background: lightBg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon size={18} color={color} strokeWidth={2} />
+        </div>
+        <span style={{
+          fontSize: 11, fontWeight: 700, color,
+          background: lightBg, padding: '3px 8px', borderRadius: 99,
+        }}>{pct}%</span>
       </div>
 
-      <div className={`w-12 h-12 rounded-2xl ${config.bg} flex items-center justify-center group-hover:scale-105 transition-transform`}>
-        <Briefcase className={`w-6 h-6 ${config.color}`} />
-      </div>
-
+      {/* número */}
       <div>
-        <span className={`text-[10px] font-bold uppercase tracking-wider ${config.color} mb-1 block`}>
-          {config.label}
-        </span>
-        <h4 className="font-bold text-gray-900 line-clamp-1 group-hover:text-emerald-700 transition-colors">{activity.job.title}</h4>
-        <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-          {activity.job.company.name} • Atualização recente
-        </p>
+        <div style={{ fontSize: 36, fontWeight: 800, color: '#0f172a', lineHeight: 1, letterSpacing: -1 }}>
+          {count}
+        </div>
+        <div style={{ fontSize: 13, color: '#64748b', fontWeight: 500, marginTop: 4 }}>{label}</div>
       </div>
-    </div>
-  );
-};
 
-const PipelineProgress = ({ label, value, color }: { label: string, value: number, color: string }) => {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm font-semibold text-gray-700">
-        <span>{label}</span>
-      </div>
-      <div className="h-3 w-full bg-emerald-50 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full bg-gradient-to-r from-emerald-500 to-green-500 shadow-sm`}
-          style={{ width: `${Math.min(100, Math.max(5, value))}%` }}
-        />
+      {/* barra */}
+      <div style={{ height: 3, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%',
+          width: show ? `${Math.max(4, pct)}%` : '0%',
+          background: color,
+          borderRadius: 99,
+          transition: 'width 1.1s cubic-bezier(0.22,1,0.36,1)',
+        }} />
       </div>
     </div>
   );
 }
 
-// ============================================================================
+// ─────────────────────────────────────────────────
+// LINHA DE ATIVIDADE
+// ─────────────────────────────────────────────────
+function ActivityItem({
+  item, i,
+}: { item: DashboardData['recentActivity'][0]; i: number }) {
+  const s = getStatus(item.status);
+  const av = avatarOf(item.job.company.name);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), 80 + i * 60);
+    return () => clearTimeout(t);
+  }, [i]);
+
+  return (
+    <div
+      className="activity-row"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+        borderRadius: 12,
+        opacity: show ? 1 : 0,
+        transform: show ? 'none' : 'translateY(8px)',
+        transition: 'opacity 0.35s ease, transform 0.35s ease, background 0.15s',
+        cursor: 'pointer',
+      }}
+    >
+      {/* avatar empresa */}
+      <div style={{
+        width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+        background: av.bg, color: av.fg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 12, fontWeight: 800, letterSpacing: 0.3,
+        border: `1px solid ${av.fg}20`,
+      }}>
+        {initials(item.job.company.name)}
+      </div>
+
+      {/* info */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{
+          fontSize: 13, fontWeight: 600, color: '#0f172a',
+          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          lineHeight: 1.3, marginBottom: 2,
+        }}>
+          {item.job.title}
+        </p>
+        <p style={{ fontSize: 12, color: '#94a3b8' }}>{item.job.company.name}</p>
+      </div>
+
+      {/* badge status */}
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        fontSize: 11, fontWeight: 600,
+        padding: '4px 10px', borderRadius: 99,
+        background: s.bg, color: s.text,
+        whiteSpace: 'nowrap', flexShrink: 0,
+      }}>
+        <span style={{
+          width: 5, height: 5, borderRadius: 99,
+          background: s.dot, display: 'inline-block',
+        }} />
+        {s.label}
+      </span>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// DONUT MINI
+// ─────────────────────────────────────────────────
+function FunnelBar({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setShow(true), 300); return () => clearTimeout(t); }, []);
+  const pct = total ? (value / total) * 100 : 0;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 8, height: 8, borderRadius: 99, background: color }} />
+          <span style={{ fontSize: 12, color: '#475569', fontWeight: 500 }}>{label}</span>
+        </div>
+        <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>{value}</span>
+      </div>
+      <div style={{ height: 4, background: '#f1f5f9', borderRadius: 99, overflow: 'hidden' }}>
+        <div style={{
+          height: '100%',
+          width: show ? `${Math.max(2, pct)}%` : '0%',
+          background: color,
+          borderRadius: 99,
+          transition: 'width 1.2s cubic-bezier(0.22,1,0.36,1)',
+        }} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────
+// AÇÃO RÁPIDA
+// ─────────────────────────────────────────────────
+function QuickLink({ href, icon: Icon, color, title, sub }: {
+  href: string; icon: React.ElementType; color: string; title: string; sub: string;
+}) {
+  return (
+    <Link href={href} style={{ textDecoration: 'none', display: 'block' }}>
+      <div className="quick-link" style={{
+        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+        border: '1px solid #e2e8f0', borderRadius: 12, background: '#fff',
+        transition: 'all 0.18s ease', cursor: 'pointer',
+      }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10,
+          background: color + '15',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <Icon size={16} color={color} strokeWidth={2} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', marginBottom: 1 }}>{title}</p>
+          <p style={{ fontSize: 11, color: '#94a3b8' }}>{sub}</p>
+        </div>
+        <ChevronRight size={14} color="#cbd5e1" />
+      </div>
+    </Link>
+  );
+}
+
+// ─────────────────────────────────────────────────
 // PÁGINA PRINCIPAL
-// ============================================================================
+// ─────────────────────────────────────────────────
 export default function DashboardPage() {
-  const { user, userId } = useAppStore();
+  const { user, userId } = useAppStore() as { user: any; userId: string };
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<DashboardData>({
     overview: { total: 0, applied: 0, interviews: 0, offers: 0, rejected: 0, drafts: 0 },
-    recentActivity: []
+    recentActivity: [],
   });
 
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Bom dia' : hour < 18 ? 'Boa tarde' : 'Boa noite';
+  const firstName = (user?.name || user?.email || 'Candidato').split(/[\s@]/)[0];
+
+  const successRate = data.overview.total > 0
+    ? Math.round(((data.overview.interviews + data.overview.offers) / data.overview.total) * 100)
+    : 0;
+
   useEffect(() => {
-    async function loadData() {
-      if (!userId) return;
-      try {
-        const stats = await statsApi.getSummary(userId);
-        setData(stats);
-      } catch (error) {
-        console.error('Falha ao carregar dashboard:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
+    if (!userId) return;
+    statsApi.getSummary(userId)
+      .then(setData)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [userId]);
 
   return (
     <AppShell>
-      <div className="space-y-8 pb-10 max-w-7xl mx-auto px-4 sm:px-0">
+      <style>{`
+        .metric-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important; transform: translateY(-2px) !important; }
+        .activity-row:hover { background: #f8fafc !important; }
+        .quick-link:hover { border-color: #10b981 !important; box-shadow: 0 0 0 3px #10b98115 !important; }
+        .nova-vaga:hover { background: #059669 !important; box-shadow: 0 4px 14px rgba(16,185,129,0.4) !important; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
 
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 28, paddingBottom: 40 }}>
+
+        {/* ── HEADER ── */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 inline-block">Visão Geral</h1>
-            <p className="text-gray-500 text-sm mt-1">Acompanhe o progresso da sua busca</p>
+            <h1 style={{
+              fontSize: 26, fontWeight: 800, color: '#0f172a',
+              margin: 0, letterSpacing: -0.5,
+            }}>
+              {greeting}, {firstName} 👋
+            </h1>
+            <p style={{ color: '#94a3b8', fontSize: 14, marginTop: 4, fontWeight: 400 }}>
+              Acompanhe sua jornada de candidaturas
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <Link href="/jobs">
-              <Button className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl px-6 py-3 h-auto font-semibold shadow-lg shadow-emerald-500/30 transition-all hover:-translate-y-0.5">
-                <Plus className="w-4 h-4 mr-2" />
-                Nova Vaga
-              </Button>
-            </Link>
-          </div>
+          <Link href="/jobs">
+            <button
+              className="nova-vaga"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 7,
+                background: '#10b981', color: '#fff',
+                border: 'none', borderRadius: 12,
+                padding: '11px 20px', fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', transition: 'all 0.2s ease',
+                boxShadow: '0 2px 8px rgba(16,185,129,0.3)',
+              }}
+            >
+              <Plus size={17} strokeWidth={2.5} />
+              Nova Vaga
+            </button>
+          </Link>
         </div>
 
-        {/* 📊 GRID DE ESTATÍSTICAS (MY TASK) */}
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <div className="w-1 h-6 bg-emerald-500 rounded-full"></div>
-            Métricas Principais
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatsCard
-              title="Candidaturas"
-              subtitle="Enviadas"
-              count={`${data.overview.applied}`}
-              total={data.overview.total}
-              icon={<Send />}
-              colorClass="text-emerald-600"
-              bgClass="bg-emerald-50"
-            />
-            <StatsCard
-              title="Entrevistas"
-              subtitle="Agendadas"
-              count={`${data.overview.interviews}`}
-              total={data.overview.total}
-              icon={<Calendar />}
-              colorClass="text-blue-500"
-              bgClass="bg-blue-50"
-            />
-            <StatsCard
-              title="Rascunhos"
-              subtitle="Em preparação"
-              count={`${data.overview.drafts}`}
-              total={data.overview.total}
-              icon={<FileText />}
-              colorClass="text-purple-500"
-              bgClass="bg-purple-50"
-            />
-            <StatsCard
-              title="Em Andamento"
-              subtitle="No Pipeline"
-              count={`${data.overview.total - data.overview.rejected}`}
-              total={data.overview.total}
-              icon={<Clock />}
-              colorClass="text-orange-500"
-              bgClass="bg-orange-50"
-            />
-          </div>
+        {/* ── MÉTRICAS ── */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+          gap: 14,
+        }}>
+          <MetricCard label="Candidaturas" value={data.overview.applied} total={data.overview.total} icon={Send} color="#10b981" lightBg="#ecfdf5" delay={0} />
+          <MetricCard label="Entrevistas" value={data.overview.interviews} total={data.overview.total} icon={Calendar} color="#3b82f6" lightBg="#eff6ff" delay={60} />
+          <MetricCard label="Rascunhos" value={data.overview.drafts} total={data.overview.total} icon={FileText} color="#8b5cf6" lightBg="#f5f3ff" delay={120} />
+          <MetricCard label="Em Andamento" value={Math.max(0, data.overview.total - data.overview.rejected)} total={data.overview.total} icon={Clock} color="#f59e0b" lightBg="#fff7ed" delay={180} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recently Visit (Activity Feed) */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <div className="w-1 h-6 bg-emerald-500 rounded-full"></div>
-                Atividade Recente
-              </h2>
-              <Link href="/pipeline" className="text-sm text-emerald-600 hover:text-emerald-700 font-semibold hover:underline">Ver pipeline</Link>
+        {/* ── LINHA PRINCIPAL ── */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.8fr) minmax(0,1fr)', gap: 18, alignItems: 'start' }}>
+
+          {/* ATIVIDADE RECENTE */}
+          <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '18px 20px 14px', borderBottom: '1px solid #f1f5f9',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Briefcase size={15} color="#10b981" />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', letterSpacing: 0.2 }}>
+                  Atividade Recente
+                </span>
+              </div>
+              <Link href="/pipeline" style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+                fontSize: 12, color: '#10b981', fontWeight: 600, textDecoration: 'none',
+              }}>
+                Ver pipeline <ArrowRight size={12} />
+              </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div style={{ padding: '8px 8px 12px' }}>
               {loading ? (
-                <div className="col-span-2 py-12 flex justify-center text-gray-400">
-                  <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '36px 0' }}>
+                  <Loader2 size={24} color="#10b981" style={{ animation: 'spin 0.8s linear infinite' }} />
                 </div>
               ) : data.recentActivity.length === 0 ? (
-                <div className="col-span-2 bg-emerald-50/50 rounded-3xl p-8 text-center border-2 border-dashed border-emerald-100">
-                  <p className="text-gray-500 font-medium">Nenhuma atividade recente</p>
-                  <Link href="/jobs" className="text-sm text-emerald-600 font-bold underline mt-2 inline-block">Começar a buscar</Link>
+                <div style={{ padding: '36px 20px', textAlign: 'center' }}>
+                  <Sparkles size={28} color="#cbd5e1" style={{ marginBottom: 10 }} />
+                  <p style={{ fontSize: 13, color: '#64748b', fontWeight: 500, marginBottom: 6 }}>
+                    Nenhuma atividade ainda
+                  </p>
+                  <Link href="/jobs" style={{ fontSize: 12, color: '#10b981', fontWeight: 700 }}>
+                    Buscar vagas →
+                  </Link>
                 </div>
               ) : (
-                data.recentActivity.slice(0, 4).map((item) => (
-                  <ActivityCard key={item.id} activity={item} />
+                data.recentActivity.slice(0, 6).map((item, i) => (
+                  <ActivityItem key={item.id} item={item} i={i} />
                 ))
               )}
             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-8">
-            {/* Urgently Task (Progress) */}
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <div className="w-1 h-6 bg-emerald-500 rounded-full"></div>
-                Status do Pipeline
-              </h2>
-              <div className="bg-white p-6 rounded-3xl border border-emerald-50 shadow-sm hover:shadow-lg hover:shadow-emerald-500/5 transition-all space-y-6">
-                <PipelineProgress
-                  label={`Candidaturas (${data.overview.applied})`}
-                  value={(data.overview.applied / (data.overview.total || 1)) * 100}
-                  color="bg-emerald-500"
-                />
-                <PipelineProgress
-                  label={`Entrevistas (${data.overview.interviews})`}
-                  value={(data.overview.interviews / (data.overview.total || 1)) * 100}
-                  color="bg-emerald-500"
-                />
-                <PipelineProgress
-                  label={`Propostas (${data.overview.offers})`}
-                  value={(data.overview.offers / (data.overview.total || 1)) * 100}
-                  color="bg-emerald-500"
-                />
-                <div className="pt-2 flex justify-between text-xs font-bold text-gray-400 px-1">
-                  <span>0%</span>
-                  <span>50%</span>
-                  <span>100%</span>
-                </div>
+          {/* COLUNA DIREITA */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* FUNIL */}
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <TrendingUp size={15} color="#10b981" />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Funil</span>
+                {successRate > 0 && (
+                  <span style={{
+                    marginLeft: 'auto', fontSize: 11, fontWeight: 700,
+                    color: '#10b981', background: '#ecfdf5',
+                    padding: '2px 8px', borderRadius: 99,
+                  }}>{successRate}% sucesso</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <FunnelBar label="Candidaturas" value={data.overview.applied} total={data.overview.total} color="#10b981" />
+                <FunnelBar label="Entrevistas" value={data.overview.interviews} total={data.overview.total} color="#3b82f6" />
+                <FunnelBar label="Propostas" value={data.overview.offers} total={data.overview.total} color="#f59e0b" />
+                <FunnelBar label="Rejeitados" value={data.overview.rejected} total={data.overview.total} color="#ef4444" />
               </div>
             </div>
 
-            {/* New Chat (Quick Actions) */}
-            <div>
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <div className="w-1 h-6 bg-emerald-500 rounded-full"></div>
-                Ações Rápidas
-              </h2>
-              <div className="bg-white p-2 rounded-3xl border border-emerald-50 shadow-sm space-y-1">
-                <Link href="/jobs" className="flex items-center gap-4 p-3 hover:bg-emerald-50 rounded-2xl transition-colors group">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 group-hover:bg-white group-hover:shadow-md transition-all flex items-center justify-center text-emerald-600">
-                    <Search className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-sm group-hover:text-emerald-700 transition-colors">Buscar Vagas</h4>
-                    <p className="text-xs text-gray-400">Encontre novas oportunidades</p>
-                  </div>
-                </Link>
+            {/* DICA */}
+            <div style={{
+              background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
+              border: '1px solid #a7f3d0',
+              borderRadius: 16, padding: '16px 18px',
+            }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <Sparkles size={14} color="#059669" style={{ marginTop: 1, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#065f46' }}>Dica do Copilot</span>
+              </div>
+              <p style={{ fontSize: 12, color: '#047857', lineHeight: 1.6 }}>
+                {data.overview.interviews > 0
+                  ? `Você tem ${data.overview.interviews} entrevista${data.overview.interviews > 1 ? 's' : ''} — pesquise a cultura da empresa e prepare perguntas!`
+                  : data.overview.applied > 0
+                    ? 'Após 5–7 dias sem resposta, envie um follow-up educado. Isso pode triplicar suas chances.'
+                    : 'Adicione vagas do seu interesse para começar a acompanhar o progresso da busca.'}
+              </p>
+            </div>
 
-                <Link href="/pipeline" className="flex items-center gap-4 p-3 hover:bg-emerald-50 rounded-2xl transition-colors group">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 group-hover:bg-white group-hover:shadow-md transition-all flex items-center justify-center text-emerald-600">
-                    <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-sm group-hover:text-emerald-700 transition-colors">Pipeline</h4>
-                    <p className="text-xs text-gray-400">Gerencie suas candidaturas</p>
-                  </div>
-                </Link>
-
-                <Link href="/profile" className="flex items-center gap-4 p-3 hover:bg-emerald-50 rounded-2xl transition-colors group">
-                  <div className="w-10 h-10 rounded-xl bg-gray-50 group-hover:bg-white group-hover:shadow-md transition-all flex items-center justify-center text-emerald-600">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-sm group-hover:text-emerald-700 transition-colors">Perfil</h4>
-                    <p className="text-xs text-gray-400">Atualize seu currículo</p>
-                  </div>
-                </Link>
+            {/* AÇÕES RÁPIDAS */}
+            <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, padding: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <CheckCircle2 size={14} color="#10b981" />
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>Ações Rápidas</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <QuickLink href="/jobs" icon={Search} color="#3b82f6" title="Buscar Vagas" sub="Encontre oportunidades" />
+                <QuickLink href="/pipeline" icon={TrendingUp} color="#8b5cf6" title="Ver Pipeline" sub="Acompanhe candidaturas" />
+                <QuickLink href="/settings" icon={CheckCircle2} color="#f59e0b" title="Otimizar Perfil" sub="Atualize seu currículo" />
               </div>
             </div>
+
           </div>
         </div>
 

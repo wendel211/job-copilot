@@ -3,14 +3,18 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
-  
+
   /* Elegant Green Palette */
-  --primary: #047857;      /* Emerald 700 */
-  --primary-dark: #065f46; /* Emerald 800 */
-  --primary-light: #34d399; /* Emerald 400 */
-  
-  --secondary: #064e3b;    /* Emerald 900 (Deep Green) */
-  
+  --primary: #047857;
+  /* Emerald 700 */
+  --primary-dark: #065f46;
+  /* Emerald 800 */
+  --primary-light: #34d399;
+  /* Emerald 400 */
+
+  --secondary: #064e3b;
+  /* Emerald 900 (Deep Green) */
+
   --gray-50: #f8fafc;
   --gray-100: #f1f5f9;
   --gray-200: #e2e8f0;
@@ -49,8 +53,55 @@ body {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
   }
 }
