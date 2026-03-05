@@ -250,5 +250,10 @@ Este projeto é de uso **privado**. Todos os direitos reservados.
 ---
 
 <p align="center">
-  Feito com ☕ e muito TypeScript
-</p>
+
+<img src="https://github.com/user-attachments/assets/0bff724a-dc47-4caa-a224-858aa151e1e6" alt="job4" width="400" />
+<img src="https://github.com/user-attachments/assets/9bc880ee-8259-4ea4-9784-65727b65c880" alt="job1" width="400" />
+<img src="https://github.com/user-attachments/assets/d4f9cfb1-c8d8-4abf-b171-711910db5778" alt="job2" width="400" />
+<img src="https://github.com/user-attachments/assets/bcb88dd5-9968-4a23-8230-9d4c37fa3965" alt="job3" width="400" />
+
+
